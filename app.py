@@ -1,10 +1,10 @@
 from llm_services.bot import ask_chatbot,tutor
-# from llm_services.outline import create_outline
+from llm_services.outline import create_outline
 # query ="""topic: Algebra of Complex Numbers ,subtopic : Multiplication"""
 # tutor(query)
 # # create_outline()
-# # from loaders.multiple_file import save_directory
-# # save_directory('./documents')
+# from loaders.multiple_file import save_directory
+# save_directory('./documents')
 
 import json
 
@@ -39,12 +39,18 @@ def read_root():
 from pydantic import BaseModel
 class Query(BaseModel):
     text: str
+    adapt: str
 
 
 
 @app.post("/tutor")
 def tutor_endpoint(payload: Query):
     # query ="""topic: Algebra of Complex Numbers ,subtopic : Multiplication"""
-    data = tutor(payload.text)
+    data = tutor(payload.text,payload.adapt)
     return clean_and_parse_json(data)
     # return {"you_sent": payload.text}
+
+@app.get('/outline')    
+def outline():
+    data = create_outline()
+    return data

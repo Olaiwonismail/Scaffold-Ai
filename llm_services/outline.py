@@ -6,6 +6,7 @@ from tools.dynamic_prompt import prompt_with_context
 from langchain.agents import create_agent
 from typing import Optional
 from pydantic import BaseModel, Field
+
 from loaders.multiple_file import chunk_directory
 agent = create_agent(model, tools=[submit_outline], middleware=[prompt_with_context])
 def create_outline():
@@ -68,3 +69,5 @@ IMPORTANT:
     else:
         print("\n❌ Extraction Failed.") 
         print("If you see text above in the 'The Agent replied...' section, the model ignored the tool.")
+    return final_outline
+    

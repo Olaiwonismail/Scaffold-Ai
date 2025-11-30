@@ -19,54 +19,78 @@ def prompt_with_context(request: ModelRequest) -> str:
 
     return system_message
 
+doc = {'item':None}
 @dynamic_prompt
 def get_lessons(request: ModelRequest) -> str:
     """Inject context into state messages."""
     last_query = request.state["messages"][-1].text
     retrieved_docs = vector_store.similarity_search(last_query)
+    doc['item'] = retrieved_docs
+    print(retrieved_docs)
 
     docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
 
     system_message = (
         """
-You are an expert AI Tutor with the teaching style of "The Organic Chemistry Tutor".
-Your goal is to take a topic from the user's notes and teach it step-by-step.
+. Convert the user's notes into a lesson.
+Output ONLY valid JSON matching the structure below.
 
-### INSTRUCTIONS:
-1. Break the lesson into exactly these 5 Phases:
-   - Phase 1: The General Concept (Analogy + Definition)
-   - Phase 2: The Toolkit (Formulas & Rules)
-   - Phase 3: Simple Example (Step-by-step walkthrough)
-   - Phase 4: Complex Example (Exam-style nuance)
-   - Phase 5: Summary (Key takeaways)
-
-2. For each Phase, generate a list of "steps".
-   - "narration": Casual, conversational voice explaining the 'why'. (e.g., "First, we look at the exponent...")
-   - "board": The academic content (Formulas, Math, Definitions). Use LaTeX wrapped in $$ for math.
-
-### IMPORTANT FORMATTING RULES:
-1. Use Markdown for text (bold, headers).
-2. Use LaTeX for ALL math, wrapped in double dollar signs ($$).
-3. CRITICAL: Because this is JSON, you MUST double-escape all LaTeX backslashes. 
-   - Example: Do not write "\frac". Write "\\frac". 
-   - Example: Do not write "\times". Write "\\times".
-
-### OUTPUT FORMAT:
-Return ONLY valid JSON matching this structure. Do not include markdown formatting (```json).
-
+### STRUCTURE:
 {
   "topic_title": "Topic Name",
   "lesson_phases": [
     {
-      "phase_name": "Phase Name",
+      "phase_name": "one for each of these: 1. Concept (Analogy), 2. Toolkit (Formulas), 3. Simple Example, 4. Complex Example, 5. Summary",
       "steps": [
-        {"narration": "string", "board": "string"},
-        {"narration": "string", "board": "string"}
-      ]
+        {"narration": "Conversational, explaining the 'why'", "board": "Academic content. Use LaTeX inside $$"}
+      ],
+      "source":"add the exact pages and source info was gotten from"
     }
   ]
 }
 
+### CRITICAL RULES:
+1. Use Markdown for text formatting.
+2. Use LaTeX for math wrapped in $$.
+3. JSON FORMATTING: You MUST double-escape all LaTeX backslashes (e.g., use "\\frac" not "\frac").
+"""
+        f"\n\n{docs_content}"
+    )
+
+    return system_message
+
+@dynamic_prompt
+def get_flashcards(request: ModelRequest) -> str:
+    """Inject context into state messages for flashcards."""
+    
+    retrieved_docs = doc['item']
+    print(retrieved_docs)
+
+    docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
+
+    system_message = (
+        """
+. Convert the user's notes into a set of flashcards.
+Output ONLY valid JSON matching the structure below.
+
+### STRUCTURE:
+{
+  "topic_title": "Topic Name",
+  "flashcards": [
+    {
+      "question": "Question text",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "answer": "Correct option letter",
+      
+    }
+  ]
+}
+
+### CRITICAL RULES:
+1. Generate exactly 3 MCQs.
+2. Each MCQ must have 4 options.
+3. Use Markdown for text formatting if needed.
+4. Use LaTeX for any math wrapped in $$ and double-escape backslashes (e.g., "\\frac" not "\frac").
 """
         f"\n\n{docs_content}"
     )
