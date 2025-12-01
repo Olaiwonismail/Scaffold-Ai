@@ -69,6 +69,12 @@ async def chunk_directory(directory_path: str):
             chunks = text_splitter.split_documents(docs)
             # document_ids = vector_store.add_documents(documents=chunks)
             chunk_text = "\n\n".join([chunk.page_content for chunk in chunks])
+         
+
+            with open(f"{my_id}.txt", "w") as f:
+                f.write(chunk_text)
+
+
     return chunk_text
             
     

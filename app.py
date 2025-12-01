@@ -1,14 +1,23 @@
-from llm_services.bot import tutor,quiz
+from llm_services.bot import tutor,quiz,ask_chatbot
 from llm_services.outline import create_outline
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from typing import List
+from typing import List,Optional
 import tempfile
 import os
 import shutil
 import asyncio
 from loaders.multiple_file import load_directory
+from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
+
 MAX_TOTAL_SIZE = 50 * 1024 * 1024 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],       # or ["http://localhost:3000"] for specific frontends
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # query ="""topic: Algebra of Complex Numbers ,subtopic : Multiplication"""
 # tutor(query)
@@ -50,27 +59,32 @@ from pydantic import BaseModel
 class Query(BaseModel):
     text: str
     adapt: str
+    analogy: Optional[str]=''
+
+class QueryB(BaseModel):
+    text: str
 
 
+@app.post("/quizes")
 
-@app.get("/quizes")
-
-async def quizes():
-    cards = await quiz() 
+async def quizes(payload: QueryB):
+    cards = await quiz(payload.text) 
     return clean_and_parse_json(cards)
 
 
 @app.post("/tutor")
 async def tutor_endpoint(payload: Query):
     # query ="""topic: Algebra of Complex Numbers ,subtopic : Multiplication"""
-    data = await tutor(payload.text,payload.adapt)
+    data = await tutor(payload.text,payload.adapt,payload.analogy)
     return clean_and_parse_json(data)
     # return {"you_sent": payload.text}
 
-@app.get('/outline')    
-async def outline():
-    data = await create_outline()
+@app.post('/chatbot')    
+async def chatbot(payload : QueryB):
+    data = await ask_chatbot(payload.text)
+    print(data)
     return data
+    
 
 
 @app.post("/upload_pdfs/")
@@ -105,14 +119,10 @@ async def upload_pdfs(files: List[UploadFile] = File(...)):
             saved_files.append(file.filename)
 
         # Pass the temp_dir and saved_files to your async processing function
-        result = await load(temp_dir)
-
-        return {
-            "temp_directory": temp_dir,
-            "uploaded_files": saved_files,
-            "total_size_bytes": total_size,
-            "processing_result": result
-        }
+        result = await load_directory(temp_dir)
+        data = await create_outline(temp_dir)
+    
+        return data
 
     finally:
         # Clean up temp directory after processing

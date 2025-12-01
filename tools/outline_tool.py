@@ -5,7 +5,7 @@ from langchain_core.tools import tool
 # 1. Define the Schema
 class OutlineNode(BaseModel):
     title: str = Field(description="Main topic title ")
-    summary: Optional[str] = Field(None, description="Brief summary of this section")
+    summary: str = Field(None, description="Brief summary of this section")
     # 👇 FORCE the model to look for bullet points
     subtopics: list[str] = Field(
         default_factory=list, 

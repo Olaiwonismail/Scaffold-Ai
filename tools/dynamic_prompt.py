@@ -62,8 +62,9 @@ Output ONLY valid JSON matching the structure below.
 @dynamic_prompt
 def get_quiz(request: ModelRequest) -> str:
     """Inject context into state messages for flashcards."""
-    
-    retrieved_docs = doc['item']
+    last_query = request.state["messages"][-1].text
+    retrieved_docs = vector_store.similarity_search(last_query)
+    # retrieved_docs = doc['item']
     print(retrieved_docs)
 
     docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)

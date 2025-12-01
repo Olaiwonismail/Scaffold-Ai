@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field
 
 from loaders.multiple_file import chunk_directory
 agent = create_agent(model, tools=[submit_outline], middleware=[prompt_with_context])
-async def create_outline():
-    chunk_text =await chunk_directory("./documents")
+async def create_outline(dir:str):
+    chunk_text =await chunk_directory(dir)
     print('chunk_text')
     agent = create_agent(model, tools=[submit_outline], middleware=[prompt_with_context])
 
@@ -21,9 +21,10 @@ async def create_outline():
 IMPORTANT:
 1. Use the 'submit_outline' tool.
 2. Extract only Topics and Sub-headers.
+3. create a summary 
     
-    3. Do NOT reply with conversational text or Markdown. 
-    4. Only output the tool call.
+    4. Do NOT reply with conversational text or Markdown. 
+    5. Only output the tool call.
 
     Document:
     {chunk_text}"""
