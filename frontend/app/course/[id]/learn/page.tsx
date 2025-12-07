@@ -207,8 +207,8 @@ export default function LearnPage() {
                                     moduleIdx === currentModuleIndex && subIdx === currentSubModuleIndex
                                       ? "bg-primary/10 text-primary"
                                       : subModule.completed
-                                        ? "text-success hover:bg-success/10"
-                                        : "text-muted-foreground hover:bg-secondary/50"
+                                      ? "text-success hover:bg-success/10"
+                                      : "text-muted-foreground hover:bg-secondary/50"
                                   }`}
                                 >
                                   {subModule.completed ? (
@@ -232,7 +232,8 @@ export default function LearnPage() {
 
           {/* Center - Canvas/Slides */}
           <main className="flex-1 flex flex-col overflow-hidden">
-            <ScrollArea className="flex-1 p-6">
+            {/* CHANGED: Replaced ScrollArea with div + overflow-y-auto to force scroll bar */}
+            <div className="flex-1 overflow-y-auto p-6">
               <AnimatePresence mode="wait">
                 {currentSlide && (
                   <motion.div
@@ -275,10 +276,10 @@ export default function LearnPage() {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </ScrollArea>
+            </div>
 
             {/* Navigation */}
-            <div className="border-t border-border/50 p-4 flex items-center justify-between bg-card/30">
+            <div className="border-t border-border/50 p-4 flex items-center justify-between bg-card/30 flex-shrink-0">
               <Button variant="outline" onClick={handlePrevSlide} disabled={currentSlideIndex === 0}>
                 <ChevronLeft className="w-4 h-4 mr-2" />
                 Previous
