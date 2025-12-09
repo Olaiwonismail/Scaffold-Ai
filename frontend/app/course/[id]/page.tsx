@@ -13,6 +13,8 @@ import { BookOpen, Upload, FileText, ChevronRight, Home, Trash2, Play, List, Fil
 import { getCourse, saveCourse, type Course, type Module, type UploadedFile } from "@/lib/storage"
 import { uploadPDFs } from "@/lib/api"
 import { LoadingScreen } from "@/components/loading-screen"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -24,6 +26,7 @@ export default function CoursePage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [uploadError, setUploadError] = useState("")
   const [dragActive, setDragActive] = useState(false)
+  const [urls, setUrls] = useState("")
 
   useEffect(() => {
     const existingCourse = getCourse()
@@ -35,21 +38,29 @@ export default function CoursePage() {
   }, [params.id, router])
 
   const handleFileUpload = useCallback(
-    async (files: FileList | File[]) => {
+    async (files: FileList | File[], providedUrls?: string[]) => {
       setUploadError("")
       const fileArray = Array.from(files)
+      const urlArray = providedUrls || (urls ? urls.split(",").map((u) => u.trim()).filter((u) => u) : [])
 
-      // Check file sizes
-      const oversizedFiles = fileArray.filter((f) => f.size > MAX_FILE_SIZE)
-      if (oversizedFiles.length > 0) {
-        setUploadError(`Some files exceed the 5MB limit. Due to beta launch constraints, please upload smaller files.`)
-        return
+      // Check file sizes if files are provided
+      if (fileArray.length > 0) {
+        const oversizedFiles = fileArray.filter((f) => f.size > MAX_FILE_SIZE)
+        if (oversizedFiles.length > 0) {
+          setUploadError(`Some files exceed the 5MB limit. Due to beta launch constraints, please upload smaller files.`)
+          return
+        }
+
+        // Check if all files are PDFs
+        const nonPdfFiles = fileArray.filter((f) => f.type !== "application/pdf")
+        if (nonPdfFiles.length > 0) {
+          setUploadError("Only PDF files are supported.")
+          return
+        }
       }
 
-      // Check if all files are PDFs
-      const nonPdfFiles = fileArray.filter((f) => f.type !== "application/pdf")
-      if (nonPdfFiles.length > 0) {
-        setUploadError("Only PDF files are supported.")
+      if (fileArray.length === 0 && urlArray.length === 0) {
+        setUploadError("Please provide at least one file or URL.")
         return
       }
 
@@ -57,7 +68,7 @@ export default function CoursePage() {
       setIsProcessing(true)
 
       try {
-        const response = await uploadPDFs(fileArray)
+        const response = await uploadPDFs(fileArray, urlArray)
 
         const newFiles: UploadedFile[] = fileArray.map((f) => ({
           name: f.name,
@@ -85,15 +96,16 @@ export default function CoursePage() {
 
         saveCourse(updatedCourse)
         setCourse(updatedCourse)
+        setUrls("") // Clear URLs after success
       } catch (error) {
-        setUploadError("Failed to process files. Please try again.")
+        setUploadError("Failed to process files/URLs. Please try again.")
         console.error(error)
       } finally {
         setIsUploading(false)
         setIsProcessing(false)
       }
     },
-    [course],
+    [course, urls],
   )
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -337,6 +349,26 @@ export default function CoursePage() {
                   </Button>
                 </label>
                 <p className="text-xs text-muted-foreground mt-4">Maximum file size: 5MB per file (Beta limitation)</p>
+              </div>
+
+              {/* New URL Input Section */}
+              <div className="space-y-4">
+                <Label htmlFor="urls">Or provide URLs (e.g., YouTube links, comma-separated)</Label>
+                <Input
+                  id="urls"
+                  type="text"
+                  placeholder="https://example.com/video1, https://example.com/video2"
+                  value={urls}
+                  onChange={(e) => setUrls(e.target.value)}
+                  disabled={isUploading}
+                />
+                <Button
+                  onClick={() => handleFileUpload([], urls.split(",").map((u) => u.trim()).filter((u) => u))}
+                  disabled={isUploading || !urls.trim()}
+                  variant="outline"
+                >
+                  Process URLs
+                </Button>
               </div>
 
               {uploadError && (

@@ -45,12 +45,15 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
 }
 
 // Upload PDFs - using local API route
-export async function uploadPDFs(files: File[]): Promise<TopicResponse> {
+export async function uploadPDFs(files: File[], urls?: string[]): Promise<TopicResponse> {
   return withRetry(async () => {
     const formData = new FormData()
     files.forEach((file) => {
       formData.append("files", file)
     })
+    if (urls && urls.length > 0) {
+      formData.append("urls", urls.join(","))
+    }
 
     const response = await fetch("/api/upload", {
       method: "POST",

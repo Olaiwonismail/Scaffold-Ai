@@ -1,6 +1,6 @@
 from llm_services.bot import tutor,quiz,ask_chatbot
 from llm_services.outline import create_outline
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from typing import List,Optional
 import tempfile
 import os
@@ -88,42 +88,51 @@ async def chatbot(payload : QueryB):
 
 
 @app.post("/upload_pdfs/")
-async def upload_pdfs(files: List[UploadFile] = File(...)):
-    if not files:
-        raise HTTPException(status_code=400, detail="No files uploaded.")
+async def upload_pdfs(files: List[UploadFile] = File(None), urls: str = Form(None)):
+    youtube_urls = []
+    if urls:
+        # Assume URLs are comma-separated; split and strip whitespace
+        youtube_urls = [url.strip() for url in urls.split(",") if url.strip()]
+    
+    if not files and not youtube_urls:
+        raise HTTPException(status_code=400, detail="No files or URLs provided.")
 
-    # Create a temporary directory
-    temp_dir = tempfile.mkdtemp(prefix="uploaded_pdfs_")
+    # Create a temporary directory only if files are uploaded
+    temp_dir = None
     total_size = 0
     saved_files = []
 
-    try:
-        for file in files:
-            if file.content_type != "application/pdf":
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"File '{file.filename}' is not a PDF."
-                )
-            contents = await file.read()
-            total_size += len(contents)
+    if files:
+        temp_dir = tempfile.mkdtemp(prefix="uploaded_pdfs_")
+        try:
+            for file in files:
+                if file.content_type != "application/pdf":
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"File '{file.filename}' is not a PDF."
+                    )
+                contents = await file.read()
+                total_size += len(contents)
 
-            if total_size > MAX_TOTAL_SIZE:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Total upload size exceeds 50 MB."
-                )
+                if total_size > MAX_TOTAL_SIZE:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Total upload size exceeds 50 MB."
+                    )
 
-            file_path = os.path.join(temp_dir, file.filename)
-            with open(file_path, "wb") as f:
-                f.write(contents)
-            saved_files.append(file.filename)
+                file_path = os.path.join(temp_dir, file.filename)
+                with open(file_path, "wb") as f:
+                    f.write(contents)
+                saved_files.append(file.filename)
 
-        # Pass the temp_dir and saved_files to your async processing function
-        result = await load_directory(temp_dir)
-        data = await create_outline(temp_dir)
+            # Pass the temp_dir to your async processing function
+            result = await load_directory(temp_dir)
+        finally:
+            # Clean up temp directory after processing
+            if temp_dir:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
+    # Always call create_outline with documents and URLs
+    data = await create_outline("./documents", youtube_urls)
     
-        return data
-
-    finally:
-        # Clean up temp directory after processing
-        shutil.rmtree(temp_dir, ignore_errors=True)
+    return data
