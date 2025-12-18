@@ -82,7 +82,7 @@ Based on the codebase analysis, the backend provides:
    - Adaptive learning with analogies
    - Uses Google Gemini AI (gemini-2.5-flash-lite)
 
-2. **Quiz Generation** (`/quizes` endpoint)
+2. **Quiz Generation** (`/quizzes` endpoint)
    - Automated quiz creation from topics
    - JSON-formatted quiz cards
 
