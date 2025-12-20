@@ -10,13 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { BookOpen, Upload, FileText, ChevronRight, Home, Trash2, Play, List, File } from "lucide-react"
-import { getCourse, saveCourse, type Course, type Module, type UploadedFile } from "@/lib/storage"
+import { getCourseById, saveCourse, type Course, type Module, type UploadedFile } from "@/lib/storage"
 import { uploadPDFs } from "@/lib/api"
 import { LoadingScreen } from "@/components/loading-screen"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
 export default function CoursePage() {
   const router = useRouter()
@@ -29,8 +27,8 @@ export default function CoursePage() {
   const [urls, setUrls] = useState("")
 
   useEffect(() => {
-    const existingCourse = getCourse()
-    if (!existingCourse || existingCourse.id !== params.id) {
+    const existingCourse = getCourseById(params.id as string)
+    if (!existingCourse) {
       router.push("/dashboard")
       return
     }
@@ -43,15 +41,8 @@ export default function CoursePage() {
       const fileArray = Array.from(files)
       const urlArray = providedUrls || (urls ? urls.split(",").map((u) => u.trim()).filter((u) => u) : [])
 
-      // Check file sizes if files are provided
+      // Only check PDF type; no size limit
       if (fileArray.length > 0) {
-        const oversizedFiles = fileArray.filter((f) => f.size > MAX_FILE_SIZE)
-        if (oversizedFiles.length > 0) {
-          setUploadError(`Some files exceed the 5MB limit. Due to beta launch constraints, please upload smaller files.`)
-          return
-        }
-
-        // Check if all files are PDFs
         const nonPdfFiles = fileArray.filter((f) => f.type !== "application/pdf")
         if (nonPdfFiles.length > 0) {
           setUploadError("Only PDF files are supported.")
@@ -98,7 +89,8 @@ export default function CoursePage() {
         setCourse(updatedCourse)
         setUrls("") // Clear URLs after success
       } catch (error) {
-        setUploadError("Failed to process files/URLs. Please try again.")
+        const message = error instanceof Error ? error.message : "Failed to process files/URLs. Please try again."
+        setUploadError(message)
         console.error(error)
       } finally {
         setIsUploading(false)
@@ -348,7 +340,7 @@ export default function CoursePage() {
                     {isUploading ? "Uploading..." : "Browse Files"}
                   </Button>
                 </label>
-                <p className="text-xs text-muted-foreground mt-4">Maximum file size: 5MB per file (Beta limitation)</p>
+                <p className="text-xs text-muted-foreground mt-4">PDF files only. No size limits.</p>
               </div>
 
               {/* New URL Input Section */}

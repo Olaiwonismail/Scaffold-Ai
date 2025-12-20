@@ -8,9 +8,11 @@ import shutil
 import asyncio
 from loaders.multiple_file import load_directory
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 app = FastAPI()
 
-MAX_TOTAL_SIZE = 50 * 1024 * 1024 
+# MAX_TOTAL_SIZE = 50 * 1024 * 1024 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],       # or ["http://localhost:3000"] for specific frontends
@@ -18,6 +20,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files for images
+DOCUMENTS_DIR = os.path.join(os.path.dirname(__file__), "documents")
+IMAGES_DIR = os.path.join(DOCUMENTS_DIR, "images")
+os.makedirs(IMAGES_DIR, exist_ok=True)
+app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
 
 # query ="""topic: Algebra of Complex Numbers ,subtopic : Multiplication"""
 # tutor(query)
@@ -76,6 +84,7 @@ async def quizes(payload: QueryB):
 async def tutor_endpoint(payload: Query):
     # query ="""topic: Algebra of Complex Numbers ,subtopic : Multiplication"""
     data = await tutor(payload.text,payload.adapt,payload.analogy)
+    print(payload)
     return clean_and_parse_json(data)
     # return {"you_sent": payload.text}
 
@@ -99,7 +108,7 @@ async def upload_pdfs(files: List[UploadFile] = File(None), urls: str = Form(Non
 
     # Create a temporary directory only if files are uploaded
     temp_dir = None
-    total_size = 0
+    # total_size = 0
     saved_files = []
 
     if files:
@@ -112,27 +121,22 @@ async def upload_pdfs(files: List[UploadFile] = File(None), urls: str = Form(Non
                         detail=f"File '{file.filename}' is not a PDF."
                     )
                 contents = await file.read()
-                total_size += len(contents)
-
-                if total_size > MAX_TOTAL_SIZE:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Total upload size exceeds 50 MB."
-                    )
-
+                # removed total size limit check
                 file_path = os.path.join(temp_dir, file.filename)
                 with open(file_path, "wb") as f:
                     f.write(contents)
                 saved_files.append(file.filename)
 
             # Pass the temp_dir to your async processing function
+            data = await create_outline(temp_dir, youtube_urls)
             result = await load_directory(temp_dir)
+            
         finally:
             # Clean up temp directory after processing
             if temp_dir:
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
     # Always call create_outline with documents and URLs
-    data = await create_outline("./documents", youtube_urls)
+    
     
     return data

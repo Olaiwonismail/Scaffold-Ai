@@ -44,6 +44,7 @@ export interface LessonPhase {
   phase_name: string
   steps: LessonStep[]
   source: string
+  images?: string[] // Optional images (data URLs) attached to the slide
 }
 
 export interface QuizQuestion {
@@ -86,19 +87,49 @@ export const clearUser = () => {
   }
 }
 
-// Course operations
-export const saveCourse = (course: Course) => {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEYS.COURSE, JSON.stringify(course))
+// Course operations (multi-course support)
+const parseCourses = (): Course[] => {
+  if (typeof window === "undefined") return []
+  const data = localStorage.getItem(STORAGE_KEYS.COURSE)
+  if (!data) return []
+  try {
+    const parsed = JSON.parse(data)
+    if (Array.isArray(parsed)) return parsed
+    if (parsed && typeof parsed === "object") return [parsed as Course]
+  } catch {
+    return []
   }
+  return []
 }
 
+export const getCourses = (): Course[] => parseCourses()
+
+export const getCourseById = (id: string): Course | null => {
+  return parseCourses().find((c) => c.id === id) || null
+}
+
+// Keeps compatibility; returns the first course if present
 export const getCourse = (): Course | null => {
-  if (typeof window !== "undefined") {
-    const data = localStorage.getItem(STORAGE_KEYS.COURSE)
-    return data ? JSON.parse(data) : null
+  const courses = parseCourses()
+  return courses.length ? courses[0] : null
+}
+
+export const saveCourse = (course: Course) => {
+  if (typeof window === "undefined") return
+  const courses = parseCourses()
+  const idx = courses.findIndex((c) => c.id === course.id)
+  if (idx >= 0) {
+    courses[idx] = course
+  } else {
+    courses.push(course)
   }
-  return null
+  localStorage.setItem(STORAGE_KEYS.COURSE, JSON.stringify(courses))
+}
+
+export const deleteCourse = (id: string) => {
+  if (typeof window === "undefined") return
+  const filtered = parseCourses().filter((c) => c.id !== id)
+  localStorage.setItem(STORAGE_KEYS.COURSE, JSON.stringify(filtered))
 }
 
 export const clearCourse = () => {

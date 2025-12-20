@@ -15,6 +15,7 @@ export interface TutorResponse {
       board: string
     }[]
     source: string
+    images?: string[]
   }[]
 }
 
@@ -61,7 +62,8 @@ export async function uploadPDFs(files: File[], urls?: string[]): Promise<TopicR
     })
 
     if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`)
+      const message = await response.text()
+      throw new Error(`Upload failed: ${response.status} ${message}`)
     }
 
     return response.json()
@@ -82,7 +84,7 @@ export async function getTutorContent(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        text: `${moduleTitle}:${submoduleTitle}`,
+        text: `topic: ${moduleTitle}, subtopic: ${submoduleTitle}`,
         adapt: adaptLevel.toString(),
         analogy: analogy,
       }),
@@ -105,7 +107,7 @@ export async function getQuiz(moduleTitle: string, submoduleTitle: string): Prom
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        text: `${moduleTitle}:${submoduleTitle}`,
+        text: `topic: ${moduleTitle}, subtopic: ${submoduleTitle}`,
       }),
     })
 

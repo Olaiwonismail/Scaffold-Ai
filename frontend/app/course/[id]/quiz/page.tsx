@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Home, CheckCircle, XCircle, RotateCcw, BookOpen, Trophy, ArrowRight } from "lucide-react"
-import { getCourse, saveCourse, type Course, type Quiz } from "@/lib/storage"
+import { getCourseById, saveCourse, type Course, type Quiz } from "@/lib/storage"
 import { getQuiz } from "@/lib/api"
 import { LoadingScreen } from "@/components/loading-screen"
 import { LatexRenderer } from "@/components/latex-renderer"
@@ -27,7 +27,7 @@ export default function QuizPage() {
   const [subModuleIndex, setSubModuleIndex] = useState(0)
 
   const loadQuiz = useCallback(async (moduleIdx: number, subModuleIdx: number) => {
-    const existingCourse = getCourse()
+    const existingCourse = getCourseById(params.id as string)
     if (!existingCourse) return
 
     const module = existingCourse.modules[moduleIdx]
@@ -46,11 +46,11 @@ export default function QuizPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [params.id])
 
   useEffect(() => {
-    const existingCourse = getCourse()
-    if (!existingCourse || existingCourse.id !== params.id) {
+    const existingCourse = getCourseById(params.id as string)
+    if (!existingCourse) {
       router.push("/dashboard")
       return
     }

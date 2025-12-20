@@ -16,15 +16,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { BookOpen, Plus, LogOut, User, Sparkles, FolderOpen, GraduationCap } from "lucide-react"
-import { getUser, getCourse, saveCourse, clearUser, clearCourse, generateId, type Course } from "@/lib/storage"
+import { getUser, getCourses, saveCourse, clearUser, clearCourse, generateId, type Course } from "@/lib/storage"
 
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<ReturnType<typeof getUser>>(null)
-  const [course, setCourse] = useState<Course | null>(null)
+  const [courses, setCourses] = useState<Course[]>([])
   const [newCourseTitle, setNewCourseTitle] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [betaError, setBetaError] = useState("")
 
   useEffect(() => {
     const currentUser = getUser()
@@ -33,23 +32,11 @@ export default function DashboardPage() {
       return
     }
     setUser(currentUser)
-
-    const existingCourse = getCourse()
-    if (existingCourse) {
-      setCourse(existingCourse)
-    }
+    setCourses(getCourses())
   }, [router])
 
   const handleCreateCourse = () => {
-    if (course) {
-      setBetaError(
-        "Due to this product being in beta launch, you can only have one course at a time. Please complete or delete your current course first.",
-      )
-      return
-    }
-
     if (!newCourseTitle.trim()) return
-
     const newCourse: Course = {
       id: generateId(),
       title: newCourseTitle.trim(),
@@ -57,9 +44,8 @@ export default function DashboardPage() {
       files: [],
       createdAt: new Date().toISOString(),
     }
-
     saveCourse(newCourse)
-    setCourse(newCourse)
+    setCourses(getCourses())
     setIsDialogOpen(false)
     setNewCourseTitle("")
     router.push(`/course/${newCourse.id}`)
@@ -71,16 +57,14 @@ export default function DashboardPage() {
     router.push("/login")
   }
 
-  const handleEnterCourse = () => {
-    if (course) {
-      router.push(`/course/${course.id}`)
-    }
+  const handleEnterCourse = (id: string) => {
+    router.push(`/course/${id}`)
   }
 
-  const getCompletionPercentage = () => {
-    if (!course || course.modules.length === 0) return 0
+  const getCompletionPercentage = (course: Course) => {
+    if (!course.modules.length) return 0
     const totalSubmodules = course.modules.reduce((acc, m) => acc + m.subModules.length, 0)
-    if (totalSubmodules === 0) return 0
+    if (!totalSubmodules) return 0
     const completedSubmodules = course.modules.reduce(
       (acc, m) => acc + m.subModules.filter((s) => s.completed).length,
       0,
@@ -131,18 +115,7 @@ export default function DashboardPage() {
               <h3 className="text-xl font-semibold text-foreground">Your Courses</h3>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button
-                    onClick={() => {
-                      if (course) {
-                        setBetaError(
-                          "Due to this product being in beta launch, you can only have one course at a time. Please complete or delete your current course first.",
-                        )
-                      } else {
-                        setBetaError("")
-                        setIsDialogOpen(true)
-                      }
-                    }}
-                  >
+                  <Button onClick={() => setIsDialogOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Create Course
                   </Button>
@@ -174,63 +147,58 @@ export default function DashboardPage() {
               </Dialog>
             </div>
 
-            {betaError && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-sm text-destructive"
-              >
-                {betaError}
-              </motion.div>
-            )}
-
-            {course ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Card
-                  className="border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-colors cursor-pointer"
-                  onClick={handleEnterCourse}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                          <GraduationCap className="w-6 h-6 text-primary" />
+            {courses.length ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {courses.map((course) => (
+                  <motion.div
+                    key={course.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Card
+                      className="border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-colors cursor-pointer"
+                      onClick={() => handleEnterCourse(course.id)}
+                    >
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                              <GraduationCap className="w-6 h-6 text-primary" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg">{course.title}</CardTitle>
+                              <CardDescription>
+                                {course.modules.length} modules • {course.files.length} files
+                              </CardDescription>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <CardTitle className="text-lg">{course.title}</CardTitle>
-                          <CardDescription>
-                            {course.modules.length} modules • {course.files.length} files
-                          </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Progress</span>
+                            <span className="font-medium text-foreground">{getCompletionPercentage(course)}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                            <motion.div
+                              className="h-full bg-primary rounded-full"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${getCompletionPercentage(course)}%` }}
+                              transition={{ duration: 0.5, delay: 0.2 }}
+                            />
+                          </div>
+                          <Button className="w-full mt-4" onClick={() => handleEnterCourse(course.id)}>
+                            <FolderOpen className="w-4 h-4 mr-2" />
+                            Enter Course
+                          </Button>
                         </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium text-foreground">{getCompletionPercentage()}%</span>
-                      </div>
-                      <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full bg-primary rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${getCompletionPercentage()}%` }}
-                          transition={{ duration: 0.5, delay: 0.2 }}
-                        />
-                      </div>
-                      <Button className="w-full mt-4" onClick={handleEnterCourse}>
-                        <FolderOpen className="w-4 h-4 mr-2" />
-                        Enter Course
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
             ) : (
               <Card className="border-border/50 bg-card/30 border-dashed">
                 <CardContent className="flex flex-col items-center justify-center py-12">

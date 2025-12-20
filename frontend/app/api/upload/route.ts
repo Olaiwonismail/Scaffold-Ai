@@ -1,11 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { BASE_URL } from "@/lib/config"
 
-const BASE_URL = "http://34.30.193.245:8000"
+export const config = {
+  api: {
+    bodyParser: false,
+    sizeLimit: "100mb",
+  },
+}
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const files = formData.getAll("files")
+    const urls = formData.get("urls")
 
     const externalFormData = new FormData()
 
@@ -17,10 +24,13 @@ export async function POST(request: NextRequest) {
         externalFormData.append("files", blob, file.name)
       }
     }
+    if (typeof urls === "string" && urls.trim()) {
+      externalFormData.append("urls", urls)
+    }
 
     console.log("[v0] Uploading files to external API:", files.length, "files")
 
-    const response = await fetch(`${BASE_URL}/upload_pdfs/`, {
+    const response = await fetch(`${BASE_URL}upload_pdfs/`, {
       method: "POST",
       headers: {
         accept: "application/json",

@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChevronLeft, ChevronRight, Home, CheckCircle, Circle, BookOpen, GraduationCap, Menu, X } from "lucide-react"
 import {
-  getCourse,
+  getCourseById,
   saveCourse,
   getUser,
   getSlidesFromCache,
   saveSlidesToCache,
+  getCourse,
   type Course,
   type LessonPhase,
 } from "@/lib/storage"
@@ -33,7 +34,7 @@ export default function LearnPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   const loadSlides = useCallback(async (moduleIndex: number, subModuleIndex: number) => {
-    const existingCourse = getCourse()
+    const existingCourse = getCourseById(params.id as string)
     if (!existingCourse) return
 
     const module = existingCourse.modules[moduleIndex]
@@ -74,8 +75,8 @@ export default function LearnPage() {
   }, [])
 
   useEffect(() => {
-    const existingCourse = getCourse()
-    if (!existingCourse || existingCourse.id !== params.id) {
+    const existingCourse = getCourseById(params.id as string)
+    if (!existingCourse) {
       router.push("/dashboard")
       return
     }
@@ -273,6 +274,25 @@ export default function LearnPage() {
                         </div>
                       </div>
                     ))}
+
+                    {/* Slide Images */}
+                    {currentSlide.images?.length ? (
+                      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                        {currentSlide.images.map((src, idx) => (
+                          <div
+                            key={idx}
+                            className="border border-border/50 rounded-lg overflow-hidden bg-card/40 flex items-center justify-center"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={src}
+                              alt={`Slide image ${idx + 1}`}
+                              className="w-full h-full object-contain max-h-64"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                   </motion.div>
                 )}
               </AnimatePresence>

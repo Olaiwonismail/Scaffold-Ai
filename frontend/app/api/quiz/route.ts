@@ -1,12 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
-
-const BASE_URL = "http://34.30.193.245:8000"
+import { BASE_URL } from "@/lib/config"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    const response = await fetch(`${BASE_URL}/quizes`, {
+    const response = await fetch(`${BASE_URL}quizes`, {
       method: "POST",
       headers: {
         accept: "application/json",
