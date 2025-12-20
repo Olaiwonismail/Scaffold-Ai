@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
@@ -10,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BookOpen, Sparkles, ArrowRight, User } from "lucide-react"
+import { BookOpen } from "lucide-react"
 import { getUser, saveUser } from "@/lib/storage"
 
 export default function OnboardingPage() {
@@ -39,96 +38,68 @@ export default function OnboardingPage() {
     }
   }
 
-  const getAdaptLabel = (value: number) => {
-    if (value <= 2) return "Beginner"
-    if (value <= 4) return "Elementary"
-    if (value <= 6) return "Intermediate"
-    if (value <= 8) return "Advanced"
-    return "Expert"
+  const getLevelLabel = (value: number) => {
+    const labels = ["Beginner", "Elementary", "Intermediate", "Advanced", "Expert"]
+    return labels[Math.floor((value - 1) / 2)] || "Expert"
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
-      </div>
-
+    <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-lg relative z-10"
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-lg"
       >
         <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4"
-          >
-            <User className="w-8 h-8 text-primary" />
-          </motion.div>
-          <h1 className="text-3xl font-bold text-foreground">Tell us about yourself</h1>
-          <p className="text-muted-foreground mt-2">{"Let's make this journey fun!"}</p>
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-secondary/10 mb-4">
+            <BookOpen className="w-6 h-6 text-secondary" />
+          </div>
+          <h1 className="text-3xl font-semibold text-foreground">Personalize Learning</h1>
+          <p className="text-sm text-muted-foreground mt-2">Tell us about yourself</p>
         </div>
 
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-primary" />
-              Personalize Your Learning
-            </CardTitle>
-            <CardDescription>We use this to create analogies that resonate with your interests</CardDescription>
+        <Card className="border-border/40 shadow-sm">
+          <CardHeader className="space-y-1 pb-4">
+            <CardTitle className="text-lg">Your preferences</CardTitle>
+            <CardDescription className="text-sm">We'll use this to customize your experience</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-3">
-                <Label htmlFor="analogy" className="text-base">
-                  What are your hobbies or interests?
-                </Label>
+                <Label htmlFor="analogy" className="text-sm font-medium">What are your interests?</Label>
                 <Textarea
                   id="analogy"
-                  placeholder="I like basketball"
+                  placeholder="e.g., I like basketball, music, cooking..."
                   value={analogy}
                   onChange={(e) => setAnalogy(e.target.value)}
                   required
-                  className="bg-background/50 min-h-[100px] resize-none"
+                  className="min-h-24 resize-none"
                 />
-                <p className="text-xs text-muted-foreground">
-                  This helps us explain complex concepts using examples you can relate to
-                </p>
+                <p className="text-xs text-muted-foreground">We'll use these to explain concepts with relevant examples</p>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base">How fast do you learn</Label>
-                  <span className="text-sm font-medium text-primary">{getAdaptLabel(adaptLevel[0])}</span>
+                  <Label className="text-sm font-medium">Learning pace</Label>
+                  <span className="text-xs font-medium text-primary">{getLevelLabel(adaptLevel[0])}</span>
                 </div>
-                <Slider value={adaptLevel} onValueChange={setAdaptLevel} max={10} min={1} step={1} className="w-full" />
+                <Slider 
+                  value={adaptLevel} 
+                  onValueChange={setAdaptLevel} 
+                  max={10} 
+                  min={1} 
+                  step={1} 
+                  className="w-full"
+                />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span> </span>
-                  <span>Very Fast</span>
+                  <span>Slow</span>
+                  <span>Fast</span>
                 </div>
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading || !analogy.trim()}>
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <motion.span
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-                    >
-                      <Sparkles className="w-4 h-4" />
-                    </motion.span>
-                    Setting up...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    Continue to Dashboard
-                    <ArrowRight className="w-4 h-4" />
-                  </span>
-                )}
+                {isLoading ? "Setting up..." : "Continue to Dashboard"}
               </Button>
             </form>
           </CardContent>

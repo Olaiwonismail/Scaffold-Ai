@@ -4,42 +4,35 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-  /* Adding success color for completed states */
-  --success: oklch(0.7 0.18 145);
-  --success-foreground: oklch(0.145 0 0);
+  --background: 252 26% 97%; /* Soft Porcelain */
+  --foreground: 220 14% 18%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 220 14% 18%;
+
+  --primary: 260 53% 82%; /* Dusty Lavender */
+  --primary-foreground: 220 14% 18%;
+
+  --secondary: 207 68% 86%; /* Mist Blue */
+  --secondary-foreground: 220 14% 18%;
+
+  --accent: 27 100% 86%; /* Peach Glow */
+  --accent-foreground: 220 14% 18%;
+
+  --success: 142 46% 83%; /* Mint Cream */
+  --success-foreground: 220 14% 18%;
+
+  --destructive: 2 77% 78%;
+  --destructive-foreground: 220 14% 18%;
+
+  --border: 220 16% 85%;
+  --input: 220 16% 94%;
+  --ring: 260 53% 72%;
+
+  --muted: 220 12% 70%;
+  --muted-foreground: 220 12% 46%;
+
+  --radius: 12px;
 }
 
 .dark {
@@ -126,10 +119,15 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  button {
+    @apply transition-all duration-200;
   }
 }
 
@@ -211,4 +209,18 @@
   font-size: 0.75em;
   vertical-align: sub;
   line-height: 0;
+}
+
+@layer components {
+  .glass-effect {
+    @apply bg-card/40 backdrop-blur-md border border-border/30;
+  }
+
+  .soft-shadow {
+    @apply shadow-sm;
+  }
+
+  .gradient-bg {
+    @apply bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5;
+  }
 }

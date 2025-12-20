@@ -5,7 +5,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ChevronLeft, ChevronRight, Home, CheckCircle, Circle, BookOpen, GraduationCap, Menu, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Home, CheckCircle, Circle, BookOpen, GraduationCap, Menu, X, MessageSquare } from "lucide-react"
 import {
   getCourseById,
   saveCourse,
@@ -32,6 +32,7 @@ export default function LearnPage() {
   const [slides, setSlides] = useState<LessonPhase[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [activePanel, setActivePanel] = useState<"notes" | "chat">("notes")
 
   const loadSlides = useCallback(async (moduleIndex: number, subModuleIndex: number) => {
     const existingCourse = getCourseById(params.id as string)
@@ -148,24 +149,48 @@ export default function LearnPage() {
       <div className="h-screen bg-background flex flex-col">
         {/* Header */}
         <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm flex-shrink-0 z-40">
-          <div className="px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => router.push(`/course/${params.id}`)}>
-                <Home className="w-5 h-5" />
+          <div className="px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <Button variant="ghost" size="icon" onClick={() => router.push(`/course/${params.id}`)} className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0">
+                <Home className="w-4 h-4" />
               </Button>
-              <div className="hidden md:block">
-                <h1 className="font-bold text-foreground text-sm">{currentModule?.title}</h1>
-                <p className="text-xs text-muted-foreground">{currentSubModule?.title}</p>
+              <div className="hidden sm:block min-w-0">
+                <h1 className="font-bold text-foreground text-xs sm:text-sm truncate">{currentModule?.title}</h1>
+                <p className="text-xs text-muted-foreground truncate">{currentSubModule?.title}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                Slide {currentSlideIndex + 1} of {slides.length}
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {currentSlideIndex + 1}/{slides.length}
               </span>
-              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-                {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              <Button variant="outline" size="sm" className="sm:hidden" onClick={() => setSidebarOpen((v) => !v)}>
+                <BookOpen className="w-4 h-4 mr-2" />
+                Outline
+              </Button>
+              <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
+                {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               </Button>
             </div>
+          </div>
+          {/* Mobile top toggle */}
+          <div className="px-3 sm:px-4 pb-3 sm:hidden flex items-center gap-2">
+            <Button
+              variant={activePanel === "notes" ? "default" : "outline"}
+              size="sm"
+              className="flex-1"
+              onClick={() => setActivePanel("notes")}
+            >
+              Notes
+            </Button>
+            <Button
+              variant={activePanel === "chat" ? "default" : "outline"}
+              size="sm"
+              className="flex-1"
+              onClick={() => setActivePanel("chat")}
+            >
+              Chatbot
+              <MessageSquare className="w-4 h-4 ml-2" />
+            </Button>
           </div>
         </header>
 
@@ -178,33 +203,33 @@ export default function LearnPage() {
                 initial={{ x: -300, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: -300, opacity: 0 }}
-                className="w-64 border-r border-border/50 bg-card/30 flex-shrink-0 absolute md:relative z-30 h-full md:h-auto"
+                className="w-56 sm:w-64 border-r border-border/50 bg-card/30 flex-shrink-0 absolute md:relative z-30 h-full backdrop-blur-sm"
               >
                 <ScrollArea className="h-full">
-                  <div className="p-4">
-                    <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-primary" />
-                      Course Outline
+                  <div className="p-3 sm:p-4">
+                    <h2 className="font-semibold text-foreground text-sm mb-3 sm:mb-4 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-primary flex-shrink-0" />
+                      <span className="truncate">Course Outline</span>
                     </h2>
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       {course.modules.map((module, moduleIdx) => {
                         const allComplete = module.subModules.every((s) => s.completed)
                         return (
                           <div key={module.title}>
                             <div
-                              className={`text-sm font-medium mb-2 flex items-center gap-2 ${
+                              className={`text-xs sm:text-sm font-medium mb-1 sm:mb-2 flex items-center gap-2 ${
                                 allComplete ? "text-success" : "text-foreground"
                               }`}
                             >
-                              {allComplete ? <CheckCircle className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
+                              {allComplete ? <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" /> : <Circle className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />}
                               <span className="truncate">{module.title}</span>
                             </div>
-                            <div className="ml-6 space-y-1">
+                            <div className="ml-4 space-y-0.5 sm:space-y-1">
                               {module.subModules.map((subModule, subIdx) => (
                                 <button
                                   key={subModule.title}
                                   onClick={() => handleSelectSubModule(moduleIdx, subIdx)}
-                                  className={`w-full text-left text-xs p-2 rounded-md transition-colors flex items-center gap-2 ${
+                                  className={`w-full text-left text-xs p-1.5 sm:p-2 rounded-md transition-colors flex items-center gap-1.5 sm:gap-2 ${
                                     moduleIdx === currentModuleIndex && subIdx === currentSubModuleIndex
                                       ? "bg-primary/10 text-primary"
                                       : subModule.completed
@@ -213,9 +238,9 @@ export default function LearnPage() {
                                   }`}
                                 >
                                   {subModule.completed ? (
-                                    <CheckCircle className="w-3 h-3 flex-shrink-0" />
+                                    <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" />
                                   ) : (
-                                    <Circle className="w-3 h-3 flex-shrink-0" />
+                                    <Circle className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" />
                                   )}
                                   <span className="truncate">{subModule.title}</span>
                                 </button>
@@ -233,8 +258,7 @@ export default function LearnPage() {
 
           {/* Center - Canvas/Slides */}
           <main className="flex-1 flex flex-col overflow-hidden">
-            {/* CHANGED: Replaced ScrollArea with div + overflow-y-auto to force scroll bar */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className={`flex-1 overflow-y-auto p-3 sm:p-6 ${activePanel === "chat" ? "hidden lg:block" : ""}`}>
               <AnimatePresence mode="wait">
                 {currentSlide && (
                   <motion.div
@@ -245,30 +269,30 @@ export default function LearnPage() {
                     className="max-w-3xl mx-auto"
                   >
                     {/* Phase Badge */}
-                    <div className="mb-6">
-                      <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                        <GraduationCap className="w-4 h-4" />
+                    <div className="mb-3 sm:mb-6">
+                      <span className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium">
+                        <GraduationCap className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                         {currentSlide.phase_name}
                       </span>
                     </div>
 
                     {/* Content */}
                     {currentSlide.steps.map((step, stepIdx) => (
-                      <div key={stepIdx} className="space-y-6">
+                      <div key={stepIdx} className="space-y-3 sm:space-y-6">
                         {/* Narration */}
-                        <div className="bg-card/50 rounded-xl p-6 border border-border/50">
-                          <p className="text-foreground leading-relaxed">
+                        <div className="bg-card/50 rounded-xl p-3 sm:p-6 border border-border/50">
+                          <p className="text-xs sm:text-base text-foreground leading-relaxed">
                             <LatexRenderer content={step.narration} />
                           </p>
                         </div>
 
                         {/* Board */}
-                        <div className="bg-secondary/30 rounded-xl p-6 border border-border/50">
-                          <h4 className="text-sm font-medium text-muted-foreground mb-4 flex items-center gap-2">
-                            <BookOpen className="w-4 h-4" />
+                        <div className="bg-secondary/30 rounded-xl p-3 sm:p-6 border border-border/50">
+                          <h4 className="text-xs sm:text-sm font-medium text-muted-foreground mb-2 sm:mb-4 flex items-center gap-2">
+                            <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                             Key Points
                           </h4>
-                          <div className="text-foreground font-mono text-sm">
+                          <div className="text-xs sm:text-base text-foreground font-mono">
                             <LatexRenderer content={step.board} />
                           </div>
                         </div>
@@ -277,17 +301,16 @@ export default function LearnPage() {
 
                     {/* Slide Images */}
                     {currentSlide.images?.length ? (
-                      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                      <div className="mt-3 sm:mt-6 grid gap-2 sm:gap-4 sm:grid-cols-2">
                         {currentSlide.images.map((src, idx) => (
                           <div
                             key={idx}
                             className="border border-border/50 rounded-lg overflow-hidden bg-card/40 flex items-center justify-center"
                           >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={src}
                               alt={`Slide image ${idx + 1}`}
-                              className="w-full h-full object-contain max-h-64"
+                              className="w-full h-full object-contain max-h-48 sm:max-h-64"
                             />
                           </div>
                         ))}
@@ -298,11 +321,16 @@ export default function LearnPage() {
               </AnimatePresence>
             </div>
 
+            {/* Mobile Chat view */}
+            <div className={`flex-1 overflow-hidden ${activePanel === "chat" ? "block" : "hidden"} lg:hidden`}>
+              <ChatPanel />
+            </div>
+
             {/* Navigation */}
-            <div className="border-t border-border/50 p-4 flex items-center justify-between bg-card/30 flex-shrink-0">
-              <Button variant="outline" onClick={handlePrevSlide} disabled={currentSlideIndex === 0}>
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                Previous
+            <div className="border-t border-border/50 p-2.5 sm:p-4 flex items-center justify-between bg-card/30 flex-shrink-0 gap-2">
+              <Button variant="outline" onClick={handlePrevSlide} disabled={currentSlideIndex === 0} size="sm" className="h-9 sm:h-10 text-xs sm:text-sm px-2 sm:px-3">
+                <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Previous</span>
               </Button>
 
               <div className="flex gap-1">
@@ -310,23 +338,25 @@ export default function LearnPage() {
                   <button
                     key={idx}
                     onClick={() => setCurrentSlideIndex(idx)}
-                    className={`w-2 h-2 rounded-full transition-colors ${
+                    className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-colors ${
                       idx === currentSlideIndex ? "bg-primary" : "bg-muted"
                     }`}
                   />
                 ))}
               </div>
 
-              <Button onClick={handleNextSlide}>
+              <Button onClick={handleNextSlide} size="sm" className="h-9 sm:h-10 text-xs sm:text-sm px-2 sm:px-3">
                 {isLastSlide ? (
                   <>
-                    Take Quiz
-                    <ChevronRight className="w-4 h-4 ml-2" />
+                    <span className="hidden sm:inline">Quiz</span>
+                    <span className="sm:hidden">Q</span>
+                    <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 sm:ml-1" />
                   </>
                 ) : (
                   <>
-                    Next
-                    <ChevronRight className="w-4 h-4 ml-2" />
+                    <span className="hidden sm:inline">Next</span>
+                    <span className="sm:hidden">→</span>
+                    <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 sm:ml-1" />
                   </>
                 )}
               </Button>
@@ -337,6 +367,27 @@ export default function LearnPage() {
           <aside className="w-80 border-l border-border/50 hidden lg:block">
             <ChatPanel />
           </aside>
+        </div>
+
+        {/* Mobile bottom toggle */}
+        <div className="lg:hidden border-t border-border/50 bg-card/60 backdrop-blur-sm p-2 flex gap-2">
+          <Button
+            variant={activePanel === "notes" ? "default" : "outline"}
+            size="sm"
+            className="flex-1"
+            onClick={() => setActivePanel("notes")}
+          >
+            Notes
+          </Button>
+          <Button
+            variant={activePanel === "chat" ? "default" : "outline"}
+            size="sm"
+            className="flex-1"
+            onClick={() => setActivePanel("chat")}
+          >
+            Chatbot
+            <MessageSquare className="w-4 h-4 ml-2" />
+          </Button>
         </div>
       </div>
     </>

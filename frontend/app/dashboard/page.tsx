@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { BookOpen, Plus, LogOut, User, Sparkles, FolderOpen, GraduationCap } from "lucide-react"
+import { BookOpen, Plus, LogOut, GraduationCap } from "lucide-react"
 import { getUser, getCourses, saveCourse, clearUser, clearCourse, generateId, type Course } from "@/lib/storage"
 
 export default function DashboardPage() {
@@ -77,141 +77,127 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-border/20 bg-card/40 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <BookOpen className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h1 className="font-bold text-foreground">Scaffold AI</h1>
-              <p className="text-xs text-muted-foreground">Personalized Learning</p>
+              <h1 className="font-semibold text-foreground">Scaffold AI</h1>
+              <p className="text-xs text-muted-foreground">Learning Hub</p>
             </div>
           </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <User className="w-4 h-4" />
-              <span>{user.name}</span>
-            </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
+          <Button variant="ghost" size="icon" onClick={handleLogout}>
+            <LogOut className="w-5 h-5" />
+          </Button>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-foreground">Welcome back, {user.name.split(" ")[0]}!</h2>
-            <p className="text-muted-foreground mt-2">{"Ready to continue your learning journey?"}</p>
+            <h2 className="text-2xl font-semibold text-foreground">Welcome, {user.name.split(" ")[0]}!</h2>
+            <p className="text-sm text-muted-foreground mt-1">Continue your learning journey</p>
           </div>
 
-          {/* Course Section */}
           <div className="grid gap-6">
+            {/* Create Course Section */}
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-foreground">Your Courses</h3>
+              <h3 className="text-lg font-semibold text-foreground">Your Courses</h3>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={() => setIsDialogOpen(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Course
+                  <Button onClick={() => setIsDialogOpen(true)} size="sm" className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    New Course
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="sm:max-w-sm">
                   <DialogHeader>
-                    <DialogTitle>Create New Course</DialogTitle>
-                    <DialogDescription>Give your course a title to get started</DialogDescription>
+                    <DialogTitle>Create Course</DialogTitle>
+                    <DialogDescription>Give your course a title</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 pt-4">
                     <div className="space-y-2">
-                      <Label htmlFor="courseTitle">Course Title</Label>
+                      <Label htmlFor="courseTitle" className="text-sm">Course Title</Label>
                       <Input
                         id="courseTitle"
-                        placeholder="e.g., Complex Analysis"
+                        placeholder="e.g., Advanced Calculus"
                         value={newCourseTitle}
                         onChange={(e) => setNewCourseTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleCreateCourse()
-                        }}
+                        onKeyDown={(e) => e.key === "Enter" && handleCreateCourse()}
                       />
                     </div>
                     <Button onClick={handleCreateCourse} className="w-full">
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Create Course
+                      Create
                     </Button>
                   </div>
                 </DialogContent>
               </Dialog>
             </div>
 
-            {courses.length ? (
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {/* Courses Grid */}
+            {courses.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {courses.map((course) => (
                   <motion.div
                     key={course.id}
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3 }}
+                    onClick={() => handleEnterCourse(course.id)}
+                    className="cursor-pointer"
                   >
-                    <Card
-                      className="border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-colors cursor-pointer"
-                      onClick={() => handleEnterCourse(course.id)}
-                    >
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                              <GraduationCap className="w-6 h-6 text-primary" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg">{course.title}</CardTitle>
-                              <CardDescription>
-                                {course.modules.length} modules • {course.files.length} files
-                              </CardDescription>
-                            </div>
+                    <Card className="border-border/30 hover:border-primary/50 transition-colors h-full">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center flex-shrink-0">
+                            <GraduationCap className="w-5 h-5 text-secondary" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <CardTitle className="text-base truncate">{course.title}</CardTitle>
+                            <CardDescription className="text-xs">
+                              {course.modules.length} modules
+                            </CardDescription>
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between text-sm">
+                      <CardContent className="space-y-3">
+                        <div>
+                          <div className="flex justify-between text-xs mb-2">
                             <span className="text-muted-foreground">Progress</span>
-                            <span className="font-medium text-foreground">{getCompletionPercentage(course)}%</span>
+                            <span className="font-medium">{getCompletionPercentage(course)}%</span>
                           </div>
-                          <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                          <div className="w-full h-2 bg-secondary/20 rounded-full overflow-hidden">
                             <motion.div
-                              className="h-full bg-primary rounded-full"
+                              className="h-full bg-secondary rounded-full"
                               initial={{ width: 0 }}
                               animate={{ width: `${getCompletionPercentage(course)}%` }}
-                              transition={{ duration: 0.5, delay: 0.2 }}
+                              transition={{ duration: 0.5, delay: 0.1 }}
                             />
                           </div>
-                          <Button className="w-full mt-4" onClick={() => handleEnterCourse(course.id)}>
-                            <FolderOpen className="w-4 h-4 mr-2" />
-                            Enter Course
-                          </Button>
                         </div>
+                        <Button variant="outline" size="sm" className="w-full text-xs">
+                          Open
+                        </Button>
                       </CardContent>
                     </Card>
                   </motion.div>
                 ))}
               </div>
             ) : (
-              <Card className="border-border/50 bg-card/30 border-dashed">
+              <Card className="border-border/20 bg-secondary/5">
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
-                    <BookOpen className="w-8 h-8 text-muted-foreground" />
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                    <BookOpen className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">No courses yet</h3>
-                  <p className="text-muted-foreground text-center mb-4 max-w-sm">
-                    {"Let's create a course to start your personalized learning journey"}
+                  <h3 className="text-base font-medium text-foreground">No courses yet</h3>
+                  <p className="text-sm text-muted-foreground text-center mt-1 mb-4 max-w-sm">
+                    Create your first course to get started
                   </p>
-                  <Button onClick={() => setIsDialogOpen(true)}>
+                  <Button onClick={() => setIsDialogOpen(true)} size="sm" variant="secondary">
                     <Plus className="w-4 h-4 mr-2" />
-                    Create Your First Course
+                    Create Course
                   </Button>
                 </CardContent>
               </Card>

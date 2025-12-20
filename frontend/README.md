@@ -1,4 +1,14 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Scaffold AI Frontend
+
+A beautifully designed, personalized learning platform with a simple interface and pastel color scheme.
+
+## Features
+
+- **Clean Design**: Simple, intuitive interface with pastel colors
+- **Course Management**: Create and manage multiple learning courses
+- **Personalized Learning**: AI-powered lessons adapted to your pace and interests
+- **Progress Tracking**: Visual progress indicators for courses and lessons
+- **Interactive Learning**: Engage with lessons, take quizzes, and get feedback
 
 ## Getting Started
 
@@ -19,6 +29,21 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Design System
+
+- **Primary**: Dusty Lavender (#C6B1F0)
+- **Secondary**: Mist Blue (#B9D7F5)
+- **Accent**: Peach Glow (#FFD8B5)
+- **Success**: Mint Cream (#BFE7D0)
+- **Background**: Soft Porcelain (#F7F5FB)
+
+## Technology
+
+- Next.js 13+ with App Router
+- Tailwind CSS for styling
+- Framer Motion for animations
+- Radix UI for accessible components
 
 ## Learn More
 

@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -10,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BookOpen, Sparkles } from "lucide-react"
+import { BookOpen } from "lucide-react"
 import { getUser } from "@/lib/storage"
 
 export default function LoginPage() {
@@ -25,12 +24,11 @@ export default function LoginPage() {
     setIsLoading(true)
     setError("")
 
-    // Simulate login - check if user exists in local storage
     const user = getUser()
     if (user && user.email === email) {
       router.push("/dashboard")
     } else if (user) {
-      setError("Invalid credentials. Please try again.")
+      setError("Invalid credentials.")
       setIsLoading(false)
     } else {
       setError("No account found. Please sign up first.")
@@ -39,40 +37,30 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
-      </div>
-
+    <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md relative z-10"
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-sm"
       >
         <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4"
-          >
-            <BookOpen className="w-8 h-8 text-primary" />
-          </motion.div>
-          <h1 className="text-3xl font-bold text-foreground">Scaffold AI</h1>
-          <p className="text-muted-foreground mt-2">A study tool that actually gets to know you</p>
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-primary/10 mb-4">
+            <BookOpen className="w-6 h-6 text-primary" />
+          </div>
+          <h1 className="text-3xl font-semibold text-foreground">Scaffold AI</h1>
+          <p className="text-sm text-muted-foreground mt-2">Learn smarter with AI</p>
         </div>
 
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl">Welcome back</CardTitle>
-            <CardDescription>Enter your credentials to continue learning</CardDescription>
+        <Card className="border-border/40 shadow-sm">
+          <CardHeader className="space-y-1 pb-4">
+            <CardTitle className="text-xl">Welcome back</CardTitle>
+            <CardDescription className="text-sm">Sign in to your account</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -80,49 +68,35 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="bg-background/50"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm">Password</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="bg-background/50"
                 />
               </div>
 
               {error && (
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-destructive">
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-destructive">
                   {error}
                 </motion.p>
               )}
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <motion.span
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-                    >
-                      <Sparkles className="w-4 h-4" />
-                    </motion.span>
-                    Signing in...
-                  </span>
-                ) : (
-                  "Sign In"
-                )}
+                {isLoading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                {"Don't have an account? "}
-                <Link href="/signup" className="text-primary hover:underline font-medium">
+              <p className="text-xs text-muted-foreground">
+                Don't have an account?{" "}
+                <Link href="/signup" className="text-primary font-medium hover:underline">
                   Sign up
                 </Link>
               </p>
