@@ -13,12 +13,12 @@ export function LatexRenderer({ content, className = "" }: LatexRendererProps) {
 
     // Replace display math ($$...$$) with styled blocks
     processedContent = processedContent.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
-      return `<div class="my-4 p-3 bg-muted/50 rounded-lg overflow-x-auto font-mono text-center text-primary">${formatMath(math.trim())}</div>`
+      return `<div class="math-display">${formatMath(math.trim())}</div>`
     })
 
     // Replace inline math ($...$) with styled spans
     processedContent = processedContent.replace(/\$([^$\n]+?)\$/g, (_, math) => {
-      return `<span class="font-mono text-primary px-1">${formatMath(math.trim())}</span>`
+      return `<span class="math-inline">${formatMath(math.trim())}</span>`
     })
 
     // Convert newlines to breaks for board content
@@ -40,43 +40,93 @@ export function LatexRenderer({ content, className = "" }: LatexRendererProps) {
   return <div className={`latex-content ${className}`} dangerouslySetInnerHTML={{ __html: renderedContent }} />
 }
 
-// Simple math formatter that converts LaTeX-like syntax to readable format
+// Enhanced math formatter with better symbol support
 function formatMath(math: string): string {
-  return math
-    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "($1)/($2)")
-    .replace(/\\sqrt\{([^}]*)\}/g, "√($1)")
-    .replace(/\\sum/g, "Σ")
-    .replace(/\\prod/g, "Π")
-    .replace(/\\int/g, "∫")
-    .replace(/\\infty/g, "∞")
+  let formatted = math
+    // Fractions
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '<span class="frac"><span class="frac-num">$1</span><span class="frac-line"></span><span class="frac-den">$2</span></span>')
+    // Square roots
+    .replace(/\\sqrt\{([^}]*)\}/g, '<span class="sqrt">√<span class="sqrt-content">$1</span></span>')
+    // Summation
+    .replace(/\\sum/g, '<span class="big-op">Σ</span>')
+    .replace(/\\prod/g, '<span class="big-op">Π</span>')
+    .replace(/\\int/g, '<span class="big-op">∫</span>')
+    // Greek letters
     .replace(/\\alpha/g, "α")
     .replace(/\\beta/g, "β")
     .replace(/\\gamma/g, "γ")
+    .replace(/\\Gamma/g, "Γ")
     .replace(/\\delta/g, "δ")
-    .replace(/\\theta/g, "θ")
-    .replace(/\\pi/g, "π")
-    .replace(/\\sigma/g, "σ")
-    .replace(/\\omega/g, "ω")
-    .replace(/\\phi/g, "φ")
-    .replace(/\\psi/g, "ψ")
-    .replace(/\\lambda/g, "λ")
-    .replace(/\\mu/g, "μ")
+    .replace(/\\Delta/g, "Δ")
     .replace(/\\epsilon/g, "ε")
+    .replace(/\\varepsilon/g, "ε")
+    .replace(/\\theta/g, "θ")
+    .replace(/\\Theta/g, "Θ")
+    .replace(/\\pi/g, "π")
+    .replace(/\\Pi/g, "Π")
+    .replace(/\\sigma/g, "σ")
+    .replace(/\\Sigma/g, "Σ")
+    .replace(/\\omega/g, "ω")
+    .replace(/\\Omega/g, "Ω")
+    .replace(/\\phi/g, "φ")
+    .replace(/\\Phi/g, "Φ")
+    .replace(/\\psi/g, "ψ")
+    .replace(/\\Psi/g, "Ψ")
+    .replace(/\\lambda/g, "λ")
+    .replace(/\\Lambda/g, "Λ")
+    .replace(/\\mu/g, "μ")
+    .replace(/\\nu/g, "ν")
+    .replace(/\\xi/g, "ξ")
+    .replace(/\\rho/g, "ρ")
+    .replace(/\\tau/g, "τ")
+    .replace(/\\chi/g, "χ")
+    .replace(/\\eta/g, "η")
+    .replace(/\\kappa/g, "κ")
+    .replace(/\\zeta/g, "ζ")
+    // Math operators and symbols
+    .replace(/\\infty/g, "∞")
     .replace(/\\cdot/g, "·")
     .replace(/\\times/g, "×")
     .replace(/\\div/g, "÷")
     .replace(/\\pm/g, "±")
+    .replace(/\\mp/g, "∓")
     .replace(/\\leq/g, "≤")
     .replace(/\\geq/g, "≥")
     .replace(/\\neq/g, "≠")
     .replace(/\\approx/g, "≈")
+    .replace(/\\equiv/g, "≡")
+    .replace(/\\sim/g, "∼")
+    .replace(/\\propto/g, "∝")
+    // Arrows
     .replace(/\\rightarrow/g, "→")
     .replace(/\\leftarrow/g, "←")
     .replace(/\\Rightarrow/g, "⇒")
     .replace(/\\Leftarrow/g, "⇐")
+    .replace(/\\leftrightarrow/g, "↔")
+    .replace(/\\Leftrightarrow/g, "⇔")
+    // Sets
+    .replace(/\\in/g, "∈")
+    .replace(/\\notin/g, "∉")
+    .replace(/\\subset/g, "⊂")
+    .replace(/\\supset/g, "⊃")
+    .replace(/\\subseteq/g, "⊆")
+    .replace(/\\supseteq/g, "⊇")
+    .replace(/\\cup/g, "∪")
+    .replace(/\\cap/g, "∩")
+    .replace(/\\emptyset/g, "∅")
+    .replace(/\\forall/g, "∀")
+    .replace(/\\exists/g, "∃")
+    // Superscripts with proper handling
     .replace(/\^{([^}]*)}/g, "<sup>$1</sup>")
     .replace(/\^(\w)/g, "<sup>$1</sup>")
+    // Subscripts with proper handling
     .replace(/_{([^}]*)}/g, "<sub>$1</sub>")
     .replace(/_(\w)/g, "<sub>$1</sub>")
-    .replace(/\\[a-zA-Z]+/g, "") // Remove any remaining LaTeX commands
+    // Remove any remaining LaTeX commands
+    .replace(/\\[a-zA-Z]+/g, "")
+    // Clean up extra spaces
+    .replace(/\s+/g, " ")
+    .trim()
+
+  return formatted
 }

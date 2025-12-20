@@ -1,1 +1,1 @@
-export const BASE_URL = "https://psychic-cod-r4r56696p6wv3q7j-8000.app.github.dev/"
+export const BASE_URL = "https://congenial-cod-v6gjrr4rqrg53x97q-8000.app.github.dev/"

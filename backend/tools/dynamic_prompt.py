@@ -1,5 +1,3 @@
-
-
 from langchain.tools import tool
 from langchain.agents.middleware import dynamic_prompt, ModelRequest
 from tools.vector_store import vector_store
@@ -33,7 +31,7 @@ def get_lessons(request: ModelRequest) -> str:
 
     system_message = (
         """
-. Convert the user's notes into a lesson.
+Convert the user's notes into a lesson.
 Output ONLY valid JSON matching the structure below.
 
 ### STRUCTURE:
@@ -50,12 +48,20 @@ Output ONLY valid JSON matching the structure below.
   ]
 }
 
-### CRITICAL RULES:
-1. Use Markdown for text formatting.
-2. Use LaTeX for math wrapped in $$.
-3. JSON FORMATTING: You MUST double-escape all LaTeX backslashes (e.g., use "\\frac" not "\frac").
+### CRITICAL MATH FORMATTING RULES:
+1. ALL math expressions MUST be wrapped in $$ for display math or $ for inline math
+2. ALWAYS double-escape backslashes in JSON: \\frac, \\sqrt, \\sum, etc.
+3. Use proper LaTeX syntax: \\frac{numerator}{denominator}, \\sqrt{expression}
+4. For superscripts: x^{2} or x^2 (curly braces for multi-char)
+5. For subscripts: x_{1} or x_1
+6. Common symbols: \\pi, \\theta, \\alpha, \\beta, \\infty, \\sum, \\int
+7. Example: "The formula is $$E = mc^{2}$$" or "inline math like $\\pi r^{2}$"
+
+### OTHER RULES:
+1. Use Markdown for text formatting (bold, italic, lists)
+2. Be consistent with math notation throughout
 """
-        f"\n\n{docs_content}"
+        f"\n\nContext:\n{docs_content}"
     )
 
     return system_message
@@ -65,16 +71,15 @@ def get_quiz(request: ModelRequest) -> str:
     """Inject context into state messages for flashcards."""
     last_query = request.state["messages"][-1].text
     retrieved_docs = vector_store.similarity_search(last_query)
-    # retrieved_docs = doc['item']
     print(retrieved_docs)
 
     docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
 
     system_message = (
         """
-. Convert the user's notes into a set of quizes.
+Convert the user's notes into a set of quizzes.
 Output ONLY valid JSON matching the structure below.
-Use LaTeX  wrapped in $$ and double-escape backslashes (e.g., "\\frac" not "\frac")
+
 ### STRUCTURE:
 {
   "topic_title": "Topic Name",
@@ -82,19 +87,24 @@ Use LaTeX  wrapped in $$ and double-escape backslashes (e.g., "\\frac" not "\fra
     {
       "question": "Question text",
       "options": ["Option A", "Option B", "Option C", "Option D"],
-      "answer": "Correct option letter",
-      
+      "answer": "Correct option letter"
     }
   ]
 }
 
-### CRITICAL RULES:
-1. Generate exactly 3 MCQs.
-2. Each MCQ must have 4 options.
-3. Use Markdown for text formatting if needed.
-4. Use LaTeX for any math wrapped in $$ and double-escape backslashes (e.g., "\\frac" not "\frac").
+### CRITICAL MATH FORMATTING RULES:
+1. ALL math expressions MUST be wrapped in $$ for display or $ for inline
+2. ALWAYS double-escape backslashes: \\frac, \\sqrt, \\sum, etc.
+3. Example: "What is $$\\frac{1}{2} + \\frac{1}{3}$$?"
+4. Example inline: "If $x = 2$, what is $x^{2}$?"
+5. Use proper LaTeX for fractions, roots, powers, Greek letters
+
+### OTHER RULES:
+1. Generate exactly 3 MCQs
+2. Each MCQ must have 4 options
+3. Use Markdown for text formatting if needed
 """
-        f"\n\n{docs_content}"
+        f"\n\nContext:\n{docs_content}"
     )
 
     return system_message
