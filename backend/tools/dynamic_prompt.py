@@ -8,6 +8,7 @@ from tools.vector_store import vector_store
 def prompt_with_context(request: ModelRequest) -> str:
     """Inject context into state messages."""
     last_query = request.state["messages"][-1].text
+
     retrieved_docs = vector_store.similarity_search(last_query)
 
     docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
