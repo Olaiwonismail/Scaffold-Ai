@@ -140,50 +140,74 @@ export default function DashboardPage() {
             {/* Courses Grid */}
             {courses.length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {courses.map((course) => (
-                  <motion.div
-                    key={course.id}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    onClick={() => handleEnterCourse(course.id)}
-                    className="cursor-pointer"
-                  >
-                    <Card className="border-border/30 hover:border-primary/50 transition-colors h-full">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center flex-shrink-0">
-                            <GraduationCap className="w-5 h-5 text-secondary" />
+                {courses.map((course) => {
+                  const courseComplete =
+                    course.modules.length > 0 &&
+                    course.modules.every((m) => m.completed || m.subModules.every((s) => s.completed))
+                  return (
+                    <motion.div
+                      key={course.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      onClick={() => handleEnterCourse(course.id)}
+                      className="cursor-pointer"
+                    >
+                      <Card
+                        className={`border-border/30 hover:border-primary/50 transition-colors h-full ${
+                          courseComplete ? "border-green-500/60 bg-green-50/60" : ""
+                        }`}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                courseComplete ? "bg-green-100" : "bg-secondary/20"
+                              }`}
+                            >
+                              <GraduationCap
+                                className={`w-5 h-5 ${courseComplete ? "text-green-700" : "text-secondary"}`}
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <CardTitle className="text-base truncate flex items-center gap-2">
+                                {course.title}
+                                {courseComplete && (
+                                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                                    Completed
+                                  </span>
+                                )}
+                              </CardTitle>
+                              <CardDescription className="text-xs">
+                                {course.modules.length} modules
+                              </CardDescription>
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <CardTitle className="text-base truncate">{course.title}</CardTitle>
-                            <CardDescription className="text-xs">
-                              {course.modules.length} modules
-                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div>
+                            <div className="flex justify-between text-xs mb-2">
+                              <span className="text-muted-foreground">Progress</span>
+                              <span className="font-medium">{getCompletionPercentage(course)}%</span>
+                            </div>
+                            <div className="w-full h-2 rounded-full overflow-hidden bg-secondary/20">
+                              <motion.div
+                                className={`h-full rounded-full ${
+                                  courseComplete ? "bg-green-500" : "bg-secondary"
+                                }`}
+                                initial={{ width: 0 }}
+                                animate={{ width: `${getCompletionPercentage(course)}%` }}
+                                transition={{ duration: 0.5, delay: 0.1 }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div>
-                          <div className="flex justify-between text-xs mb-2">
-                            <span className="text-muted-foreground">Progress</span>
-                            <span className="font-medium">{getCompletionPercentage(course)}%</span>
-                          </div>
-                          <div className="w-full h-2 bg-secondary/20 rounded-full overflow-hidden">
-                            <motion.div
-                              className="h-full bg-secondary rounded-full"
-                              initial={{ width: 0 }}
-                              animate={{ width: `${getCompletionPercentage(course)}%` }}
-                              transition={{ duration: 0.5, delay: 0.1 }}
-                            />
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" className="w-full text-xs">
-                          Open
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
+                          <Button variant="outline" size="sm" className="w-full text-xs">
+                            Open
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )
+                })}
               </div>
             ) : (
               <Card className="border-border/20 bg-secondary/5">

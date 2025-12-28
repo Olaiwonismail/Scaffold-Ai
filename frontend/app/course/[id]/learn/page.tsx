@@ -149,8 +149,18 @@ export default function LearnPage() {
       <div className="h-screen bg-background flex flex-col">
         {/* Header */}
         <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm flex-shrink-0 z-40">
-          <div className="px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
+          <div className="px-3 sm:px-4 py-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 h-9 sm:h-10"
+                onClick={() => setSidebarOpen((v) => !v)}
+                aria-label="Toggle outline sidebar"
+              >
+                {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                <span className="text-xs sm:text-sm">Outline</span>
+              </Button>
               <Button variant="ghost" size="icon" onClick={() => router.push(`/course/${params.id}`)} className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0">
                 <Home className="w-4 h-4" />
               </Button>
@@ -163,13 +173,6 @@ export default function LearnPage() {
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {currentSlideIndex + 1}/{slides.length}
               </span>
-              <Button variant="outline" size="sm" className="sm:hidden" onClick={() => setSidebarOpen((v) => !v)}>
-                <BookOpen className="w-4 h-4 mr-2" />
-                Outline
-              </Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-                {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-              </Button>
             </div>
           </div>
           {/* Mobile top toggle */}
@@ -209,7 +212,7 @@ export default function LearnPage() {
                   <div className="p-3 sm:p-4">
                     <h2 className="font-semibold text-foreground text-sm mb-3 sm:mb-4 flex items-center gap-2">
                       <BookOpen className="w-4 h-4 text-primary flex-shrink-0" />
-                      <span className="truncate">Course Outline</span>
+                      <span className="leading-tight break-words line-clamp-2">Course Outline</span>
                     </h2>
                     <div className="space-y-3 sm:space-y-4">
                       {course.modules.map((module, moduleIdx) => {
@@ -222,7 +225,7 @@ export default function LearnPage() {
                               }`}
                             >
                               {allComplete ? <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" /> : <Circle className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />}
-                              <span className="truncate">{module.title}</span>
+                              <span className="leading-tight break-words line-clamp-2">{module.title}</span>
                             </div>
                             <div className="ml-4 space-y-0.5 sm:space-y-1">
                               {module.subModules.map((subModule, subIdx) => (
@@ -242,7 +245,7 @@ export default function LearnPage() {
                                   ) : (
                                     <Circle className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" />
                                   )}
-                                  <span className="truncate">{subModule.title}</span>
+                                  <span className="leading-snug break-words line-clamp-2">{subModule.title}</span>
                                 </button>
                               ))}
                             </div>

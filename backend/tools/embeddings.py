@@ -1,4 +1,5 @@
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+# vector = embeddings.embed_query("hello, world!")
 
