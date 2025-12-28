@@ -5,13 +5,8 @@ import dotenv
 dotenv.load_dotenv()
 
 
-from langchain_google_vertexai import ChatVertexAI
+import os
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-model = ChatVertexAI(
-    model="gemini-2.5-flash",
-    temperature=0,
-    max_tokens=None,
-    max_retries=6,
-    stop=None,
-    # other params...
-)
+
+model = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite")
