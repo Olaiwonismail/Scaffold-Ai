@@ -1,220 +1,100 @@
-export interface User {
-  uid: string
-  id: string
-  email: string
-  name: string
-  analogy: string // User's interests/hobbies for personalized learning
-  adaptLevel: number // 1-10 slider value
-  createdAt: string
-}
+// Re-export types so we don't break imports
+export type { User, SubModule, Module, UploadedFile, Course, LessonStep, LessonPhase, QuizQuestion, Quiz } from "./types"
+import type { User, Course } from "./types"
 
-export interface SubModule {
-  title: string
-  completed: boolean
-  slides?: LessonPhase[]
-}
+// --- API Helpers ---
 
-export interface Module {
-  title: string
-  summary: string
-  subtopics: string[]
-  subModules: SubModule[]
-  completed: boolean
-}
-
-export interface UploadedFile {
-  name: string
-  size: number
-  uploadedAt: string
-}
-
-export interface Course {
-  id: string
-  title: string
-  modules: Module[]
-  files: UploadedFile[]
-  createdAt: string
-}
-
-export interface LessonStep {
-  narration: string
-  board: string
-}
-
-export interface LessonPhase {
-  phase_name: string
-  steps: LessonStep[]
-  source: string
-  images?: string[] // Optional images (data URLs) attached to the slide
-}
-
-export interface QuizQuestion {
-  question: string
-  options: string[]
-  answer: string
-}
-
-export interface Quiz {
-  topic_title: string
-  flashcards: QuizQuestion[]
-}
-
-// Storage keys
-const STORAGE_KEYS = {
-  USER: "studysmart_user",
-  COURSE: "studysmart_course",
-  SLIDES_CACHE: "studysmart_slides_cache",
-  QUIZ_CACHE: "studysmart_quiz_cache",
-}
-
-// User operations
-export const saveUser = (user: User) => {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user))
-  }
-}
-
-export const getUser = (): User | null => {
-  if (typeof window !== "undefined") {
-    const data = localStorage.getItem(STORAGE_KEYS.USER)
-    return data ? JSON.parse(data) : null
-  }
-  return null
-}
-
-export const clearUser = () => {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(STORAGE_KEYS.USER)
-  }
-}
-
-// Course operations (multi-course support)
-const parseCourses = (): Course[] => {
-  if (typeof window === "undefined") return []
-  const data = localStorage.getItem(STORAGE_KEYS.COURSE)
-  if (!data) return []
+// User Operations
+export const getUser = async (uid: string): Promise<User | null> => {
   try {
-    const parsed = JSON.parse(data)
-    if (Array.isArray(parsed)) return parsed
-    if (parsed && typeof parsed === "object") return [parsed as Course]
-  } catch {
+    const res = await fetch(`/api/users?uid=${uid}`)
+    if (!res.ok) return null
+    return await res.json()
+  } catch (error) {
+    console.error("Error fetching user:", error)
+    return null
+  }
+}
+
+export const saveUser = async (user: User): Promise<User | null> => {
+  try {
+    const res = await fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(user),
+    })
+    if (!res.ok) throw new Error("Failed to save user")
+    return await res.json()
+  } catch (error) {
+    console.error("Error saving user:", error)
+    return null
+  }
+}
+
+// Course Operations
+export const getCourses = async (uid: string): Promise<Course[]> => {
+  try {
+    const res = await fetch(`/api/courses?uid=${uid}`)
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.courses || []
+  } catch (error) {
+    console.error("Error fetching courses:", error)
     return []
   }
-  return []
 }
 
-export const getCourses = (): Course[] => parseCourses()
-
-export const setCourses = (courses: Course[]) => {
-  if (typeof window === "undefined") return
-  localStorage.setItem(STORAGE_KEYS.COURSE, JSON.stringify(courses))
-}
-
-export const getCourseById = (id: string): Course | null => {
-  return parseCourses().find((c) => c.id === id) || null
-}
-
-// Keeps compatibility; returns the first course if present
-export const getCourse = (): Course | null => {
-  const courses = parseCourses()
-  return courses.length ? courses[0] : null
-}
-
-export const saveCourse = (course: Course) => {
-  if (typeof window === "undefined") return
-  const courses = parseCourses()
-  const idx = courses.findIndex((c) => c.id === course.id)
-  if (idx >= 0) {
-    courses[idx] = course
-  } else {
-    courses.push(course)
-  }
-  localStorage.setItem(STORAGE_KEYS.COURSE, JSON.stringify(courses))
-  void syncCoursesToServer(courses)
-}
-
-export const deleteCourse = (id: string) => {
-  if (typeof window === "undefined") return
-  const filtered = parseCourses().filter((c) => c.id !== id)
-  localStorage.setItem(STORAGE_KEYS.COURSE, JSON.stringify(filtered))
-  void syncCoursesToServer(filtered)
-}
-
-export const clearCourse = () => {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(STORAGE_KEYS.COURSE)
-    void syncCoursesToServer([])
-  }
-}
-
-// Slides cache operations
-export const saveSlidesToCache = (key: string, slides: LessonPhase[]) => {
-  if (typeof window !== "undefined") {
-    const cache = getSlidesCache()
-    cache[key] = slides
-    localStorage.setItem(STORAGE_KEYS.SLIDES_CACHE, JSON.stringify(cache))
-  }
-}
-
-export const getSlidesFromCache = (key: string): LessonPhase[] | null => {
-  if (typeof window !== "undefined") {
-    const cache = getSlidesCache()
-    return cache[key] || null
-  }
-  return null
-}
-
-export const getSlidesCache = (): Record<string, LessonPhase[]> => {
-  if (typeof window !== "undefined") {
-    const data = localStorage.getItem(STORAGE_KEYS.SLIDES_CACHE)
-    return data ? JSON.parse(data) : {}
-  }
-  return {}
-}
-
-// Quiz cache operations
-export const saveQuizToCache = (key: string, quiz: Quiz) => {
-  if (typeof window !== "undefined") {
-    const cache = getQuizCache()
-    cache[key] = quiz
-    localStorage.setItem(STORAGE_KEYS.QUIZ_CACHE, JSON.stringify(cache))
-  }
-}
-
-export const getQuizFromCache = (key: string): Quiz | null => {
-  if (typeof window !== "undefined") {
-    const cache = getQuizCache()
-    return cache[key] || null
-  }
-  return null
-}
-
-export const getQuizCache = (): Record<string, Quiz> => {
-  if (typeof window !== "undefined") {
-    const data = localStorage.getItem(STORAGE_KEYS.QUIZ_CACHE)
-    return data ? JSON.parse(data) : {}
-  }
-  return {}
-}
-
-// Persist courses to MongoDB via API; fire-and-forget to avoid blocking UI
-const syncCoursesToServer = async (courses: Course[]) => {
-  if (typeof window === "undefined") return
-  const user = getUser()
-  if (!user?.uid) return
-
+export const getCourseById = async (uid: string, courseId: string): Promise<Course | null> => {
   try {
+    const courses = await getCourses(uid)
+    return courses.find((c) => c.id === courseId) || null
+  } catch (error) {
+    console.error("Error fetching course:", error)
+    return null
+  }
+}
+
+export const saveCourse = async (uid: string, course: Course): Promise<Course | null> => {
+  try {
+    const currentCourses = await getCourses(uid)
+    const idx = currentCourses.findIndex((c) => c.id === course.id)
+    let updatedCourses = [...currentCourses]
+    if (idx >= 0) {
+      updatedCourses[idx] = course
+    } else {
+      updatedCourses.push(course)
+    }
+
+    const res = await fetch("/api/courses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid, courses: updatedCourses }),
+    })
+
+    if (!res.ok) throw new Error("Failed to save courses")
+    return course
+  } catch (error) {
+    console.error("Error saving course:", error)
+    return null
+  }
+}
+
+export const deleteCourse = async (uid: string, courseId: string): Promise<void> => {
+  try {
+    const currentCourses = await getCourses(uid)
+    const filtered = currentCourses.filter((c) => c.id !== courseId)
+
     await fetch("/api/courses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid: user.uid, courses }),
+      body: JSON.stringify({ uid, courses: filtered }),
     })
   } catch (error) {
-    console.error("Failed to sync courses", error)
+    console.error("Error deleting course:", error)
   }
 }
 
-// Generate unique ID
+// Helper to generate IDs
 export const generateId = () => {
   return Math.random().toString(36).substring(2) + Date.now().toString(36)
 }

@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Home, CheckCircle, XCircle, RotateCcw, BookOpen, Trophy, ArrowRight } from "lucide-react"
-import { getCourseById, saveCourse, getUser, setCourses as cacheCourses, type Course, type Quiz } from "@/lib/storage"
+import { getCourseById, saveCourse, getUser } from "@/lib/storage"
+import type { Course, Quiz } from "@/lib/types"
 import { getQuiz } from "@/lib/api"
 import { LoadingScreen } from "@/components/loading-screen"
 import { LatexRenderer } from "@/components/latex-renderer"
+import { auth } from "@/lib/firebase"
 
 export default function QuizPage() {
   const router = useRouter()
@@ -27,7 +29,10 @@ export default function QuizPage() {
   const [subModuleIndex, setSubModuleIndex] = useState(0)
 
   const loadQuiz = useCallback(async (moduleIdx: number, subModuleIdx: number) => {
-    const existingCourse = getCourseById(params.id as string)
+    const currentUser = auth.currentUser
+    if (!currentUser) return
+
+    const existingCourse = await getCourseById(currentUser.uid, params.id as string)
     if (!existingCourse) return
 
     const module = existingCourse.modules[moduleIdx]
@@ -36,10 +41,25 @@ export default function QuizPage() {
     const subModule = module.subModules[subModuleIdx]
     if (!subModule) return
 
+    // Check if quiz already exists in course
+    if (subModule.quiz) {
+       setQuiz(subModule.quiz)
+       setIsLoading(false)
+       setCourse(existingCourse)
+       return
+    }
+
     setIsLoading(true)
     try {
       const response = await getQuiz(module.title, subModule.title)
       setQuiz(response)
+
+      // Save quiz to DB
+      const updatedCourse = { ...existingCourse }
+      updatedCourse.modules[moduleIdx].subModules[subModuleIdx].quiz = response
+      await saveCourse(currentUser.uid, updatedCourse)
+      setCourse(updatedCourse)
+
     } catch (error) {
       console.error("Failed to load quiz:", error)
       setQuiz(null)
@@ -50,26 +70,13 @@ export default function QuizPage() {
 
   useEffect(() => {
     const hydrateCourse = async () => {
-      let existingCourse = getCourseById(params.id as string)
-
-      if (!existingCourse) {
-        const user = getUser()
-        if (!user?.uid) {
-          router.push("/login")
+      const currentUser = auth.currentUser
+      if (!currentUser) {
+          // Wait for auth or redirect
           return
-        }
-
-        try {
-          const response = await fetch(`/api/courses?uid=${user.uid}`)
-          if (response.ok) {
-            const payload = await response.json()
-            cacheCourses(payload.courses || [])
-            existingCourse = getCourseById(params.id as string) ?? null
-          }
-        } catch (error) {
-          console.error("Failed to refresh courses", error)
-        }
       }
+
+      const existingCourse = await getCourseById(currentUser.uid, params.id as string)
 
       if (!existingCourse) {
         router.push("/dashboard")
@@ -89,7 +96,31 @@ export default function QuizPage() {
       loadQuiz(moduleIdx, subModuleIdx)
     }
 
-    void hydrateCourse()
+    // Auth listener wrapper
+     const unsubscribe = auth.onAuthStateChanged(async (user) => {
+        if (user) {
+             const existingCourse = await getCourseById(user.uid, params.id as string)
+             if (!existingCourse) {
+                 router.push("/dashboard")
+                 return
+             }
+             setCourse(existingCourse)
+
+             const moduleParam = searchParams.get("module")
+             const subModuleParam = searchParams.get("submodule")
+             const moduleIdx = moduleParam ? Number.parseInt(moduleParam) : 0
+             const subModuleIdx = subModuleParam ? Number.parseInt(subModuleParam) : 0
+
+             setModuleIndex(moduleIdx)
+             setSubModuleIndex(subModuleIdx)
+             loadQuiz(moduleIdx, subModuleIdx)
+
+        } else {
+             router.push("/login")
+        }
+    })
+
+    return () => unsubscribe()
   }, [params.id, searchParams, router, loadQuiz])
 
   const handleSelectAnswer = (answer: string) => {
@@ -111,8 +142,8 @@ export default function QuizPage() {
     }
   }
 
-  const markSubModuleComplete = () => {
-    if (!course) return
+  const markSubModuleComplete = async () => {
+    if (!course || !auth.currentUser) return
 
     const updatedCourse = { ...course }
     updatedCourse.modules[moduleIndex].subModules[subModuleIndex].completed = true
@@ -123,7 +154,7 @@ export default function QuizPage() {
       updatedCourse.modules[moduleIndex].completed = true
     }
 
-    saveCourse(updatedCourse)
+    await saveCourse(auth.currentUser.uid, updatedCourse)
     setCourse(updatedCourse)
   }
 

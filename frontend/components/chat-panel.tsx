@@ -8,31 +8,48 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, Bot, User, Loader2 } from "lucide-react"
 import { sendChatMessage } from "@/lib/api"
 import { LatexRenderer } from "./latex-renderer"
+import type { Message } from "@/lib/types"
 
-interface Message {
-  id: string
-  role: "user" | "assistant"
-  content: string
+interface ChatPanelProps {
+  initialMessages?: Message[]
+  onMessagesChange?: (messages: Message[]) => void
 }
 
-export function ChatPanel() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Hi! I'm your study assistant. Feel free to ask me any questions about the material you're learning. I'm here to help clarify concepts and answer your doubts!",
-    },
-  ])
+export function ChatPanel({ initialMessages = [], onMessagesChange }: ChatPanelProps) {
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // If we have initial messages, use them.
+    // If empty, allow adding a default welcome message if truly empty (not just uninitialized)
+    if (initialMessages && initialMessages.length > 0) {
+      setMessages(initialMessages)
+    } else if (messages.length === 0) {
+       setMessages([
+        {
+          id: "welcome",
+          role: "assistant",
+          content:
+            "Hi! I'm your study assistant. Feel free to ask me any questions about the material you're learning. I'm here to help clarify concepts and answer your doubts!",
+        },
+      ])
+    }
+  }, [initialMessages])
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
+
+  const updateMessages = (newMessages: Message[]) => {
+      setMessages(newMessages)
+      if (onMessagesChange) {
+          onMessagesChange(newMessages)
+      }
+  }
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
@@ -43,7 +60,8 @@ export function ChatPanel() {
       content: input.trim(),
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    const newMessages = [...messages, userMessage]
+    updateMessages(newMessages)
     setInput("")
     setIsLoading(true)
 
@@ -54,14 +72,14 @@ export function ChatPanel() {
         role: "assistant",
         content: response.replace(/^"|"$/g, ""), // Remove surrounding quotes if present
       }
-      setMessages((prev) => [...prev, assistantMessage])
+      updateMessages([...newMessages, assistantMessage])
     } catch {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: "Sorry, I couldn't process your request. Please try again.",
       }
-      setMessages((prev) => [...prev, errorMessage])
+      updateMessages([...newMessages, errorMessage])
     } finally {
       setIsLoading(false)
     }

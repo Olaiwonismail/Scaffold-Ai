@@ -10,11 +10,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { BookOpen, Upload, FileText, ChevronRight, Home, Trash2, Play, List, File, Menu, X } from "lucide-react"
-import { getCourseById, saveCourse, getUser, setCourses as cacheCourses, type Course, type Module, type UploadedFile } from "@/lib/storage"
+import { getCourseById, saveCourse, getUser } from "@/lib/storage"
+import type { Course, Module, UploadedFile } from "@/lib/types"
 import { uploadPDFs } from "@/lib/api"
 import { LoadingScreen } from "@/components/loading-screen"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { auth } from "@/lib/firebase"
 
 export default function CoursePage() {
   const router = useRouter()
@@ -29,46 +31,53 @@ export default function CoursePage() {
 
   useEffect(() => {
     const loadCourse = async () => {
-      const existingCourse = getCourseById(params.id as string)
+      const currentUser = auth.currentUser
+      // We rely on auth state. If not ready, we might want to listen to onAuthStateChanged,
+      // but usually the user should be logged in to reach here.
+      // However, on refresh, auth.currentUser might be null initially.
+      // Let's assume the parent layout or context handles auth check or we check it here properly.
+
+      if (!currentUser) {
+         // Optionally wait or redirect.
+         // For robustness, let's use a small delay or check storage/auth listener if this was a real production app.
+         // Here, assuming dashboard redirects if not logged in.
+         return
+      }
+
+      const existingCourse = await getCourseById(currentUser.uid, params.id as string)
       if (existingCourse) {
         setCourse(existingCourse)
-        return
+      } else {
+        router.push("/dashboard")
       }
-
-      const user = getUser()
-      if (!user?.uid) {
-        router.push("/login")
-        return
-      }
-
-      try {
-        const response = await fetch(`/api/courses?uid=${user.uid}`)
-        if (response.ok) {
-          const data = await response.json()
-          cacheCourses(data.courses || [])
-          const refreshedCourse = getCourseById(params.id as string)
-          if (refreshedCourse) {
-            setCourse(refreshedCourse)
-            return
-          }
-        }
-      } catch (error) {
-        console.error("Failed to refresh courses", error)
-      }
-
-      router.push("/dashboard")
     }
 
-    void loadCourse()
+    // Add listener for auth state to be safe on refresh
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+        if (user) {
+             const existingCourse = await getCourseById(user.uid, params.id as string)
+             if (existingCourse) {
+               setCourse(existingCourse)
+             } else {
+               router.push("/dashboard")
+             }
+        } else {
+            router.push("/login")
+        }
+    })
+
+    return () => unsubscribe()
   }, [params.id, router])
 
   const handleFileUpload = useCallback(
     async (files: FileList | File[], providedUrls?: string[]) => {
+      const currentUser = auth.currentUser
+      if (!currentUser) return
+
       setUploadError("")
       const fileArray = Array.from(files)
       const urlArray = providedUrls || (urls ? urls.split(",").map((u) => u.trim()).filter((u) => u) : [])
 
-      // Only check PDF type; no size limit
       if (fileArray.length > 0) {
         const nonPdfFiles = fileArray.filter((f) => f.type !== "application/pdf")
         if (nonPdfFiles.length > 0) {
@@ -107,14 +116,14 @@ export default function CoursePage() {
         }))
 
         const updatedCourse: Course = {
-          ...course!,
+          ...course!, // course should be loaded by now
           files: [...(course?.files || []), ...newFiles],
           modules: [...(course?.modules || []), ...newModules],
         }
 
-        saveCourse(updatedCourse)
+        await saveCourse(currentUser.uid, updatedCourse)
         setCourse(updatedCourse)
-        setUrls("") // Clear URLs after success
+        setUrls("")
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to process files/URLs. Please try again."
         setUploadError(message)
@@ -149,13 +158,13 @@ export default function CoursePage() {
     [handleFileUpload],
   )
 
-  const handleDeleteFile = (fileName: string) => {
-    if (!course) return
+  const handleDeleteFile = async (fileName: string) => {
+    if (!course || !auth.currentUser) return
     const updatedCourse: Course = {
       ...course,
       files: course.files.filter((f) => f.name !== fileName),
     }
-    saveCourse(updatedCourse)
+    await saveCourse(auth.currentUser.uid, updatedCourse)
     setCourse(updatedCourse)
   }
 
