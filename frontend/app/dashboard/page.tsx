@@ -20,19 +20,16 @@ import {
   getUser,
   getCourses,
   saveCourse,
-  clearUser,
-  clearCourse,
   generateId,
-  setCourses as cacheCourses,
   saveUser,
-  type Course,
 } from "@/lib/storage"
+import type { User, Course } from "@/lib/types"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [user, setUser] = useState<ReturnType<typeof getUser>>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [courses, setCourseList] = useState<Course[]>([])
   const [newCourseTitle, setNewCourseTitle] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -48,26 +45,21 @@ export default function DashboardPage() {
       }
 
       try {
-        const profileResponse = await fetch(`/api/users?uid=${firebaseUser.uid}`)
-        if (profileResponse.ok) {
-          const profile = await profileResponse.json()
-          saveUser({ ...profile, id: profile.uid })
+        // Fetch user from DB
+        const profile = await getUser(firebaseUser.uid)
+        if (profile) {
           setUser(profile)
         } else {
-          setUser(getUser())
+            // Should probably redirect to onboarding or create a default user if not found?
+            // For now, let's just keep loading state false
         }
 
-        const coursesResponse = await fetch(`/api/courses?uid=${firebaseUser.uid}`)
-        if (coursesResponse.ok) {
-          const payload = await coursesResponse.json()
-          cacheCourses(payload.courses || [])
-          setCourseList(payload.courses || [])
-        } else {
-          setCourseList(getCourses())
-        }
+        // Fetch courses from DB
+        const fetchedCourses = await getCourses(firebaseUser.uid)
+        setCourseList(fetchedCourses)
+
       } catch (error) {
         console.error("Failed to load user data", error)
-        setCourseList(getCourses())
       } finally {
         setIsAuthLoading(false)
       }
@@ -76,8 +68,8 @@ export default function DashboardPage() {
     return () => unsubscribe()
   }, [router])
 
-  const handleCreateCourse = () => {
-    if (!newCourseTitle.trim()) return
+  const handleCreateCourse = async () => {
+    if (!newCourseTitle.trim() || !user) return
     const newCourse: Course = {
       id: generateId(),
       title: newCourseTitle.trim(),
@@ -85,18 +77,29 @@ export default function DashboardPage() {
       files: [],
       createdAt: new Date().toISOString(),
     }
-    saveCourse(newCourse)
-    setCourseList(getCourses())
+
+    // Save to DB
+    await saveCourse(user.uid, newCourse)
+
+    // Refresh list (or just append locally)
+    const updatedList = await getCourses(user.uid)
+    setCourseList(updatedList)
+
     setIsDialogOpen(false)
     setNewCourseTitle("")
     router.push(`/course/${newCourse.id}`)
   }
 
-  const handleLogout = () => {
-    signOut(auth).catch((err) => console.error("Sign out failed", err))
-    clearUser()
-    clearCourse()
-    router.push("/login")
+  const handleLogout = async () => {
+    try {
+        await signOut(auth)
+        // Clear local state
+        setUser(null)
+        setCourseList([])
+        router.push("/login")
+    } catch (err) {
+        console.error("Sign out failed", err)
+    }
   }
 
   const handleEnterCourse = (id: string) => {

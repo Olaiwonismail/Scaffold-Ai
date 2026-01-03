@@ -11,17 +11,13 @@ import {
   getCourseById,
   saveCourse,
   getUser,
-  getSlidesFromCache,
-  saveSlidesToCache,
-  getCourse,
-  setCourses as cacheCourses,
-  type Course,
-  type LessonPhase,
 } from "@/lib/storage"
+import type { Course, LessonPhase, Message } from "@/lib/types"
 import { getTutorContent } from "@/lib/api"
 import { LoadingScreen } from "@/components/loading-screen"
 import { ChatPanel } from "@/components/chat-panel"
 import { LatexRenderer } from "@/components/latex-renderer"
+import { auth } from "@/lib/firebase"
 
 export default function LearnPage() {
   const router = useRouter()
@@ -41,7 +37,12 @@ export default function LearnPage() {
   const [noteStatus, setNoteStatus] = useState<string | null>(null)
 
   const loadSlides = useCallback(async (moduleIndex: number, subModuleIndex: number) => {
-    const existingCourse = getCourseById(params.id as string)
+    // Need fresh course data because previous updates might have saved slides to it
+    const currentUser = auth.currentUser
+    if (!currentUser) return
+
+    // We fetch the course from DB to check if slides exist
+    const existingCourse = await getCourseById(currentUser.uid, params.id as string)
     if (!existingCourse) return
 
     const module = existingCourse.modules[moduleIndex]
@@ -50,40 +51,46 @@ export default function LearnPage() {
     const subModule = module.subModules[subModuleIndex]
     if (!subModule) return
 
-    const cacheKey = `${module.title}:${subModule.title}`
-
-    // Check cache first
-    const cachedSlides = getSlidesFromCache(cacheKey)
-    if (cachedSlides) {
-      setSlides(cachedSlides)
+    // Check if slides are already saved in the course object
+    if (subModule.slides && subModule.slides.length > 0) {
+      setSlides(subModule.slides)
       setIsLoading(false)
+      // Update local state course just in case
+      setCourse(existingCourse)
       return
     }
 
     // Fetch from API
     setIsLoading(true)
     try {
-      const user = getUser()
+      const userProfile = await getUser(currentUser.uid)
       const response = await getTutorContent(
         module.title,
         subModule.title,
-        user?.adaptLevel || 5,
-        user?.analogy || "general learning",
+        userProfile?.adaptLevel || 5,
+        userProfile?.analogy || "general learning",
       )
 
       setSlides(response.lesson_phases)
-      saveSlidesToCache(cacheKey, response.lesson_phases)
+
+      // Save the generated slides to the course object in MongoDB
+      const updatedCourse = { ...existingCourse }
+      updatedCourse.modules[moduleIndex].subModules[subModuleIndex].slides = response.lesson_phases
+
+      await saveCourse(currentUser.uid, updatedCourse)
+      setCourse(updatedCourse) // Update local state
+
     } catch (error) {
       console.error("Failed to load slides:", error)
       setSlides([])
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [params.id])
 
   const loadNote = useCallback(async () => {
-    const user = getUser()
-    if (!user?.uid || !course?.id) return
+    const user = auth.currentUser
+    if (!user || !course?.id) return
 
     setIsNoteLoading(true)
     setNoteStatus(null)
@@ -112,26 +119,13 @@ export default function LearnPage() {
 
   useEffect(() => {
     const hydrateCourse = async () => {
-      let existingCourse = getCourseById(params.id as string)
-
-      if (!existingCourse) {
-        const user = getUser()
-        if (!user?.uid) {
-          router.push("/login")
+      const currentUser = auth.currentUser
+      if (!currentUser) {
+          // Wait for auth or redirect
           return
-        }
-
-        try {
-          const response = await fetch(`/api/courses?uid=${user.uid}`)
-          if (response.ok) {
-            const payload = await response.json()
-            cacheCourses(payload.courses || [])
-            existingCourse = getCourseById(params.id as string) ?? null
-          }
-        } catch (error) {
-          console.error("Failed to refresh courses", error)
-        }
       }
+
+      const existingCourse = await getCourseById(currentUser.uid, params.id as string)
 
       if (!existingCourse) {
         router.push("/dashboard")
@@ -149,10 +143,39 @@ export default function LearnPage() {
       setCurrentModuleIndex(moduleIdx)
       setCurrentSubModuleIndex(subModuleIdx)
       setCurrentSlideIndex(0)
-      loadSlides(moduleIdx, subModuleIdx)
+
+      // We need to call loadSlides, but loadSlides depends on auth.currentUser which is available here
+      // However, loadSlides is a useCallback that we will invoke.
     }
 
-    void hydrateCourse()
+    // Auth listener wrapper
+     const unsubscribe = auth.onAuthStateChanged(async (user) => {
+        if (user) {
+             const existingCourse = await getCourseById(user.uid, params.id as string)
+             if (!existingCourse) {
+                 router.push("/dashboard")
+                 return
+             }
+             setCourse(existingCourse)
+
+             const moduleParam = searchParams.get("module")
+             const subModuleParam = searchParams.get("submodule")
+             const moduleIdx = moduleParam ? Number.parseInt(moduleParam) : 0
+             const subModuleIdx = subModuleParam ? Number.parseInt(subModuleParam) : 0
+
+             setCurrentModuleIndex(moduleIdx)
+             setCurrentSubModuleIndex(subModuleIdx)
+             setCurrentSlideIndex(0)
+
+             // Now trigger slide loading
+             loadSlides(moduleIdx, subModuleIdx)
+
+        } else {
+             router.push("/login")
+        }
+    })
+
+    return () => unsubscribe()
   }, [params.id, searchParams, router, loadSlides])
 
   useEffect(() => {
@@ -176,8 +199,8 @@ export default function LearnPage() {
     }
   }
 
-  const markSubModuleComplete = () => {
-    if (!course) return
+  const markSubModuleComplete = async () => {
+    if (!course || !auth.currentUser) return
 
     const updatedCourse = { ...course }
     updatedCourse.modules[currentModuleIndex].subModules[currentSubModuleIndex].completed = true
@@ -188,7 +211,7 @@ export default function LearnPage() {
       updatedCourse.modules[currentModuleIndex].completed = true
     }
 
-    saveCourse(updatedCourse)
+    await saveCourse(auth.currentUser.uid, updatedCourse)
     setCourse(updatedCourse)
   }
 
@@ -202,8 +225,8 @@ export default function LearnPage() {
   }
 
   const handleSaveNote = async () => {
-    const user = getUser()
-    if (!user?.uid) {
+    const user = auth.currentUser
+    if (!user) {
       router.push("/login")
       return
     }
@@ -239,6 +262,18 @@ export default function LearnPage() {
     } finally {
       setIsSavingNote(false)
     }
+  }
+
+  const handleChatMessagesChange = async (newMessages: Message[]) => {
+      if (!course || !auth.currentUser) return
+
+      const updatedCourse = { ...course }
+      updatedCourse.modules[currentModuleIndex].subModules[currentSubModuleIndex].chatHistory = newMessages
+
+      // Save efficiently - maybe we should debounce this if it happens a lot?
+      // For now, save on every message update (simplest).
+      await saveCourse(auth.currentUser.uid, updatedCourse)
+      setCourse(updatedCourse)
   }
 
   if (!course) return null
@@ -466,7 +501,10 @@ export default function LearnPage() {
 
             {/* Mobile Chat view */}
             <div className={`flex-1 overflow-hidden ${activePanel === "chat" ? "block" : "hidden"} lg:hidden`}>
-              <ChatPanel />
+              <ChatPanel
+                  initialMessages={currentSubModule?.chatHistory || []}
+                  onMessagesChange={handleChatMessagesChange}
+              />
             </div>
 
             {/* Navigation */}
@@ -528,7 +566,10 @@ export default function LearnPage() {
                 </Button>
               </div>
               <div className="flex-1 overflow-hidden">
-                {activePanel === "notes" ? <NotesPanel /> : <ChatPanel />}
+                {activePanel === "notes" ? <NotesPanel /> : <ChatPanel
+                  initialMessages={currentSubModule?.chatHistory || []}
+                  onMessagesChange={handleChatMessagesChange}
+                />}
               </div>
             </div>
           </aside>
