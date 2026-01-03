@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BookOpen } from "lucide-react"
-import { getUser } from "@/lib/storage"
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+import { saveUser } from "@/lib/storage"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -18,21 +20,71 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
-    const user = getUser()
-    if (user && user.email === email) {
+    try {
+      const credentials = await signInWithEmailAndPassword(auth, email, password)
+      const uid = credentials.user.uid
+
+      const profileResponse = await fetch(`/api/users?uid=${uid}`)
+      if (!profileResponse.ok) {
+        setError("Account profile not found. Please sign up again.")
+        setIsLoading(false)
+        return
+      }
+
+      const profile = await profileResponse.json()
+      saveUser({ ...profile, id: profile.uid })
       router.push("/dashboard")
-    } else if (user) {
-      setError("Invalid credentials.")
+    } catch (loginError) {
+      const message = loginError instanceof Error ? loginError.message : "Failed to sign in."
+      setError(message)
+      console.error(loginError)
+    } finally {
       setIsLoading(false)
-    } else {
-      setError("No account found. Please sign up first.")
-      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    setError("")
+    setIsGoogleLoading(true)
+    try {
+      const provider = new GoogleAuthProvider()
+      const credentials = await signInWithPopup(auth, provider)
+      const { uid, email, displayName } = credentials.user
+
+      if (!email) {
+        throw new Error("Google account missing email")
+      }
+
+      const profilePayload = {
+        uid,
+        email,
+        name: displayName || email.split("@")[0],
+        analogy: "",
+        adaptLevel: 5,
+        createdAt: new Date().toISOString(),
+      }
+
+      await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(profilePayload),
+      })
+
+      saveUser({ ...profilePayload, id: uid })
+      router.push("/dashboard")
+    } catch (googleError) {
+      const message = googleError instanceof Error ? googleError.message : "Google sign-in failed."
+      setError(message)
+      console.error(googleError)
+    } finally {
+      setIsGoogleLoading(false)
     }
   }
 
@@ -92,6 +144,22 @@ export default function LoginPage() {
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
+
+            <div className="mt-4 flex items-center gap-2">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-[11px] text-muted-foreground">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full mt-4"
+              onClick={handleGoogleLogin}
+              disabled={isGoogleLoading}
+            >
+              {isGoogleLoading ? "Connecting..." : "Continue with Google"}
+            </Button>
 
             <div className="mt-6 text-center">
               <p className="text-xs text-muted-foreground">

@@ -2,18 +2,22 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { getUser } from "@/lib/storage"
+import { onAuthStateChanged } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
 export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    const user = getUser()
-    if (user) {
-      router.push("/dashboard")
-    } else {
-      router.push("/login")
-    }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        router.push("/dashboard")
+      } else {
+        router.push("/login")
+      }
+    })
+
+    return () => unsubscribe()
   }, [router])
 
   return (

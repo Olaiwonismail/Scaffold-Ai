@@ -30,6 +30,23 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+### Environment Variables
+
+Create a `.env.local` file in `frontend/` with your credentials before running the app:
+
+```
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+NEXT_PUBLIC_FIREBASE_APP_ID=...
+MONGODB_URI=...
+MONGODB_DB=scaffold_ai
+```
+
+Firebase values come from your Firebase project settings (Web app). `MONGODB_URI` should be a standard Mongo connection string (e.g., Atlas). `MONGODB_DB` defaults to `scaffold_ai` if omitted.
+
 ## Design System
 
 - **Primary**: Dusty Lavender (#C6B1F0)

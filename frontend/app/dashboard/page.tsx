@@ -16,23 +16,64 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { BookOpen, Plus, LogOut, GraduationCap } from "lucide-react"
-import { getUser, getCourses, saveCourse, clearUser, clearCourse, generateId, type Course } from "@/lib/storage"
+import {
+  getUser,
+  getCourses,
+  saveCourse,
+  clearUser,
+  clearCourse,
+  generateId,
+  setCourses as cacheCourses,
+  saveUser,
+  type Course,
+} from "@/lib/storage"
+import { onAuthStateChanged, signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<ReturnType<typeof getUser>>(null)
-  const [courses, setCourses] = useState<Course[]>([])
+  const [courses, setCourseList] = useState<Course[]>([])
   const [newCourseTitle, setNewCourseTitle] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isAuthLoading, setIsAuthLoading] = useState(true)
 
   useEffect(() => {
-    const currentUser = getUser()
-    if (!currentUser) {
-      router.push("/login")
-      return
-    }
-    setUser(currentUser)
-    setCourses(getCourses())
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        setUser(null)
+        setIsAuthLoading(false)
+        router.push("/login")
+        return
+      }
+
+      try {
+        const profileResponse = await fetch(`/api/users?uid=${firebaseUser.uid}`)
+        if (profileResponse.ok) {
+          const profile = await profileResponse.json()
+          saveUser({ ...profile, id: profile.uid })
+          setUser(profile)
+        } else {
+          setUser(getUser())
+        }
+
+        const coursesResponse = await fetch(`/api/courses?uid=${firebaseUser.uid}`)
+        if (coursesResponse.ok) {
+          const payload = await coursesResponse.json()
+          cacheCourses(payload.courses || [])
+          setCourseList(payload.courses || [])
+        } else {
+          setCourseList(getCourses())
+        }
+      } catch (error) {
+        console.error("Failed to load user data", error)
+        setCourseList(getCourses())
+      } finally {
+        setIsAuthLoading(false)
+      }
+    })
+
+    return () => unsubscribe()
   }, [router])
 
   const handleCreateCourse = () => {
@@ -45,13 +86,14 @@ export default function DashboardPage() {
       createdAt: new Date().toISOString(),
     }
     saveCourse(newCourse)
-    setCourses(getCourses())
+    setCourseList(getCourses())
     setIsDialogOpen(false)
     setNewCourseTitle("")
     router.push(`/course/${newCourse.id}`)
   }
 
   const handleLogout = () => {
+    signOut(auth).catch((err) => console.error("Sign out failed", err))
     clearUser()
     clearCourse()
     router.push("/login")
@@ -72,7 +114,7 @@ export default function DashboardPage() {
     return Math.round((completedSubmodules / totalSubmodules) * 100)
   }
 
-  if (!user) return null
+  if (!user || isAuthLoading) return null
 
   return (
     <div className="min-h-screen bg-background">

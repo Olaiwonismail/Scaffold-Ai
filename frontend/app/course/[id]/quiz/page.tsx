@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Home, CheckCircle, XCircle, RotateCcw, BookOpen, Trophy, ArrowRight } from "lucide-react"
-import { getCourseById, saveCourse, type Course, type Quiz } from "@/lib/storage"
+import { getCourseById, saveCourse, getUser, setCourses as cacheCourses, type Course, type Quiz } from "@/lib/storage"
 import { getQuiz } from "@/lib/api"
 import { LoadingScreen } from "@/components/loading-screen"
 import { LatexRenderer } from "@/components/latex-renderer"
@@ -49,22 +49,47 @@ export default function QuizPage() {
   }, [params.id])
 
   useEffect(() => {
-    const existingCourse = getCourseById(params.id as string)
-    if (!existingCourse) {
-      router.push("/dashboard")
-      return
+    const hydrateCourse = async () => {
+      let existingCourse = getCourseById(params.id as string)
+
+      if (!existingCourse) {
+        const user = getUser()
+        if (!user?.uid) {
+          router.push("/login")
+          return
+        }
+
+        try {
+          const response = await fetch(`/api/courses?uid=${user.uid}`)
+          if (response.ok) {
+            const payload = await response.json()
+            cacheCourses(payload.courses || [])
+            existingCourse = getCourseById(params.id as string) ?? null
+          }
+        } catch (error) {
+          console.error("Failed to refresh courses", error)
+        }
+      }
+
+      if (!existingCourse) {
+        router.push("/dashboard")
+        return
+      }
+
+      setCourse(existingCourse)
+
+      const moduleParam = searchParams.get("module")
+      const subModuleParam = searchParams.get("submodule")
+
+      const moduleIdx = moduleParam ? Number.parseInt(moduleParam) : 0
+      const subModuleIdx = subModuleParam ? Number.parseInt(subModuleParam) : 0
+
+      setModuleIndex(moduleIdx)
+      setSubModuleIndex(subModuleIdx)
+      loadQuiz(moduleIdx, subModuleIdx)
     }
-    setCourse(existingCourse)
 
-    const moduleParam = searchParams.get("module")
-    const subModuleParam = searchParams.get("submodule")
-
-    const moduleIdx = moduleParam ? Number.parseInt(moduleParam) : 0
-    const subModuleIdx = subModuleParam ? Number.parseInt(subModuleParam) : 0
-
-    setModuleIndex(moduleIdx)
-    setSubModuleIndex(subModuleIdx)
-    loadQuiz(moduleIdx, subModuleIdx)
+    void hydrateCourse()
   }, [params.id, searchParams, router, loadQuiz])
 
   const handleSelectAnswer = (answer: string) => {

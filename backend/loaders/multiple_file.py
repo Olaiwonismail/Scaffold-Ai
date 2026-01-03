@@ -21,6 +21,12 @@ text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=2000, chunk_overlap=200, add_start_index=True
 )
 
+
+print("--------------------------------------------------")
+print(f"MY VECTOR STORE IS: {vector_store}")
+print(f"THE TYPE IS: {type(vector_store)}")
+print("--------------------------------------------------")
+
 def extract_pdf_images_and_text(filepath: str) -> List[Document]:
     """Extract TEXT + EMBEDDED IMAGES (saved to disk, paths in metadata)"""
     doc = fitz.open(filepath)

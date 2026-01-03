@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Textarea } from "@/components/ui/textarea"
 import { ChevronLeft, ChevronRight, Home, CheckCircle, Circle, BookOpen, GraduationCap, Menu, X, MessageSquare } from "lucide-react"
 import {
   getCourseById,
@@ -13,6 +14,7 @@ import {
   getSlidesFromCache,
   saveSlidesToCache,
   getCourse,
+  setCourses as cacheCourses,
   type Course,
   type LessonPhase,
 } from "@/lib/storage"
@@ -33,6 +35,10 @@ export default function LearnPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activePanel, setActivePanel] = useState<"notes" | "chat">("notes")
+  const [noteContent, setNoteContent] = useState("")
+  const [isNoteLoading, setIsNoteLoading] = useState(false)
+  const [isSavingNote, setIsSavingNote] = useState(false)
+  const [noteStatus, setNoteStatus] = useState<string | null>(null)
 
   const loadSlides = useCallback(async (moduleIndex: number, subModuleIndex: number) => {
     const existingCourse = getCourseById(params.id as string)
@@ -75,25 +81,84 @@ export default function LearnPage() {
     }
   }, [])
 
-  useEffect(() => {
-    const existingCourse = getCourseById(params.id as string)
-    if (!existingCourse) {
-      router.push("/dashboard")
-      return
+  const loadNote = useCallback(async () => {
+    const user = getUser()
+    if (!user?.uid || !course?.id) return
+
+    setIsNoteLoading(true)
+    setNoteStatus(null)
+    setNoteContent("")
+
+    try {
+      const params = new URLSearchParams({
+        uid: user.uid,
+        courseId: course.id,
+        moduleIndex: currentModuleIndex.toString(),
+        subModuleIndex: currentSubModuleIndex.toString(),
+      })
+
+      const response = await fetch(`/api/notes?${params.toString()}`)
+      if (response.ok) {
+        const payload = await response.json()
+        setNoteContent(payload.content ?? "")
+      }
+    } catch (error) {
+      console.error("Failed to load notes", error)
+      setNoteStatus("Unable to load notes")
+    } finally {
+      setIsNoteLoading(false)
     }
-    setCourse(existingCourse)
+  }, [course?.id, currentModuleIndex, currentSubModuleIndex])
 
-    const moduleParam = searchParams.get("module")
-    const subModuleParam = searchParams.get("submodule")
+  useEffect(() => {
+    const hydrateCourse = async () => {
+      let existingCourse = getCourseById(params.id as string)
 
-    const moduleIdx = moduleParam ? Number.parseInt(moduleParam) : 0
-    const subModuleIdx = subModuleParam ? Number.parseInt(subModuleParam) : 0
+      if (!existingCourse) {
+        const user = getUser()
+        if (!user?.uid) {
+          router.push("/login")
+          return
+        }
 
-    setCurrentModuleIndex(moduleIdx)
-    setCurrentSubModuleIndex(subModuleIdx)
-    setCurrentSlideIndex(0)
-    loadSlides(moduleIdx, subModuleIdx)
+        try {
+          const response = await fetch(`/api/courses?uid=${user.uid}`)
+          if (response.ok) {
+            const payload = await response.json()
+            cacheCourses(payload.courses || [])
+            existingCourse = getCourseById(params.id as string) ?? null
+          }
+        } catch (error) {
+          console.error("Failed to refresh courses", error)
+        }
+      }
+
+      if (!existingCourse) {
+        router.push("/dashboard")
+        return
+      }
+
+      setCourse(existingCourse)
+
+      const moduleParam = searchParams.get("module")
+      const subModuleParam = searchParams.get("submodule")
+
+      const moduleIdx = moduleParam ? Number.parseInt(moduleParam) : 0
+      const subModuleIdx = subModuleParam ? Number.parseInt(subModuleParam) : 0
+
+      setCurrentModuleIndex(moduleIdx)
+      setCurrentSubModuleIndex(subModuleIdx)
+      setCurrentSlideIndex(0)
+      loadSlides(moduleIdx, subModuleIdx)
+    }
+
+    void hydrateCourse()
   }, [params.id, searchParams, router, loadSlides])
+
+  useEffect(() => {
+    if (!course) return
+    void loadNote()
+  }, [course, loadNote])
 
   const handleNextSlide = () => {
     if (currentSlideIndex < slides.length - 1) {
@@ -131,8 +196,49 @@ export default function LearnPage() {
     setCurrentModuleIndex(moduleIdx)
     setCurrentSubModuleIndex(subModuleIdx)
     setCurrentSlideIndex(0)
+    setNoteContent("")
     loadSlides(moduleIdx, subModuleIdx)
     router.replace(`/course/${params.id}/learn?module=${moduleIdx}&submodule=${subModuleIdx}`)
+  }
+
+  const handleSaveNote = async () => {
+    const user = getUser()
+    if (!user?.uid) {
+      router.push("/login")
+      return
+    }
+
+    if (!course) return
+
+    setIsSavingNote(true)
+    setNoteStatus(null)
+
+    try {
+      const response = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: user.uid,
+          courseId: course.id,
+          moduleIndex: currentModuleIndex,
+          subModuleIndex: currentSubModuleIndex,
+          content: noteContent,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to save note: ${response.status}`)
+      }
+
+      const saved = await response.json()
+      setNoteContent(saved.content ?? noteContent)
+      setNoteStatus("Saved")
+    } catch (error) {
+      console.error("Failed to save notes", error)
+      setNoteStatus("Unable to save notes")
+    } finally {
+      setIsSavingNote(false)
+    }
   }
 
   if (!course) return null
@@ -141,6 +247,35 @@ export default function LearnPage() {
   const currentSubModule = currentModule?.subModules[currentSubModuleIndex]
   const currentSlide = slides[currentSlideIndex]
   const isLastSlide = currentSlideIndex === slides.length - 1
+
+  const NotesPanel = () => (
+    <div className="h-full flex flex-col gap-3 p-3 sm:p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-foreground">Notes</p>
+          <p className="text-xs text-muted-foreground line-clamp-2">
+            {currentModule?.title} • {currentSubModule?.title}
+          </p>
+        </div>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {isNoteLoading ? "Loading..." : noteStatus ?? ""}
+        </span>
+      </div>
+      <Textarea
+        value={noteContent}
+        onChange={(e) => setNoteContent(e.target.value)}
+        placeholder="Capture your takeaways for this sub-module"
+        disabled={isNoteLoading || isSavingNote}
+        className="flex-1 min-h-[160px]"
+      />
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground line-clamp-1">Saved to your account in MongoDB</p>
+        <Button size="sm" onClick={handleSaveNote} disabled={isSavingNote || isNoteLoading}>
+          {isSavingNote ? "Saving..." : "Save notes"}
+        </Button>
+      </div>
+    </div>
+  )
 
   return (
     <>
@@ -324,6 +459,11 @@ export default function LearnPage() {
               </AnimatePresence>
             </div>
 
+            {/* Mobile Notes view */}
+            <div className={`lg:hidden ${activePanel === "notes" ? "block" : "hidden"} border-t border-border/50 bg-card/40`}>
+              <NotesPanel />
+            </div>
+
             {/* Mobile Chat view */}
             <div className={`flex-1 overflow-hidden ${activePanel === "chat" ? "block" : "hidden"} lg:hidden`}>
               <ChatPanel />
@@ -366,9 +506,31 @@ export default function LearnPage() {
             </div>
           </main>
 
-          {/* Right Sidebar - Chat */}
+          {/* Right Sidebar - Notes / Chat */}
           <aside className="w-80 border-l border-border/50 hidden lg:block">
-            <ChatPanel />
+            <div className="h-full flex flex-col">
+              <div className="p-3 border-b border-border/50 flex gap-2">
+                <Button
+                  variant={activePanel === "notes" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setActivePanel("notes")}
+                >
+                  Notes
+                </Button>
+                <Button
+                  variant={activePanel === "chat" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setActivePanel("chat")}
+                >
+                  Chatbot
+                </Button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {activePanel === "notes" ? <NotesPanel /> : <ChatPanel />}
+              </div>
+            </div>
           </aside>
         </div>
 

@@ -11,30 +11,60 @@ import { Slider } from "@/components/ui/slider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BookOpen } from "lucide-react"
 import { getUser, saveUser } from "@/lib/storage"
+import { onAuthStateChanged } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
 export default function OnboardingPage() {
   const router = useRouter()
   const [analogy, setAnalogy] = useState("")
   const [adaptLevel, setAdaptLevel] = useState([5])
   const [isLoading, setIsLoading] = useState(false)
+  const [uid, setUid] = useState<string | null>(null)
 
   useEffect(() => {
-    const user = getUser()
-    if (!user) {
-      router.push("/signup")
+    const cached = getUser()
+    if (cached) {
+      setAnalogy(cached.analogy || "")
+      setAdaptLevel([cached.adaptLevel || 5])
+      setUid(cached.uid)
     }
+
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        router.push("/signup")
+        return
+      }
+      setUid(currentUser.uid)
+    })
+
+    return () => unsubscribe()
   }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
-    const user = getUser()
-    if (user) {
-      user.analogy = analogy
-      user.adaptLevel = adaptLevel[0]
-      saveUser(user)
+    try {
+      const user = getUser()
+      if (!uid || !user) {
+        router.push("/signup")
+        return
+      }
+
+      const updatedUser = { ...user, analogy, adaptLevel: adaptLevel[0], uid }
+
+      await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, analogy, adaptLevel: adaptLevel[0] }),
+      })
+
+      saveUser(updatedUser)
       router.push("/dashboard")
+    } catch (error) {
+      console.error("Failed to save onboarding preferences", error)
+    } finally {
+      setIsLoading(false)
     }
   }
 

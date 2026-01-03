@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BookOpen } from "lucide-react"
-import { saveUser, generateId, getUser } from "@/lib/storage"
+import { saveUser } from "@/lib/storage"
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -19,30 +21,89 @@ export default function SignupPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
-    const existingUser = getUser()
-    if (existingUser) {
-      setError("An account already exists. Please log in.")
+    try {
+      const credentials = await createUserWithEmailAndPassword(auth, email, password)
+      const uid = credentials.user.uid
+
+      const newUser = {
+        uid,
+        id: uid,
+        email,
+        name,
+        analogy: "",
+        adaptLevel: 5,
+        createdAt: new Date().toISOString(),
+      }
+
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUser),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to save user profile")
+      }
+
+      saveUser(newUser)
+      router.push("/onboarding")
+    } catch (signupError) {
+      const message = signupError instanceof Error ? signupError.message : "Failed to create account."
+      setError(message)
+      console.error(signupError)
+    } finally {
       setIsLoading(false)
-      return
     }
+  }
 
-    const newUser = {
-      id: generateId(),
-      email,
-      name,
-      analogy: "",
-      adaptLevel: 5,
-      createdAt: new Date().toISOString(),
+  const handleGoogleSignup = async () => {
+    setError("")
+    setIsGoogleLoading(true)
+    try {
+      const provider = new GoogleAuthProvider()
+      const credentials = await signInWithPopup(auth, provider)
+      const { uid, email, displayName } = credentials.user
+
+      if (!email) {
+        throw new Error("Google account missing email")
+      }
+
+      const newUser = {
+        uid,
+        id: uid,
+        email,
+        name: displayName || email.split("@")[0],
+        analogy: "",
+        adaptLevel: 5,
+        createdAt: new Date().toISOString(),
+      }
+
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUser),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to save user profile")
+      }
+
+      saveUser(newUser)
+      router.push("/onboarding")
+    } catch (googleError) {
+      const message = googleError instanceof Error ? googleError.message : "Google signup failed."
+      setError(message)
+      console.error(googleError)
+    } finally {
+      setIsGoogleLoading(false)
     }
-
-    saveUser(newUser)
-    router.push("/onboarding")
   }
 
   return (
@@ -113,6 +174,22 @@ export default function SignupPage() {
                 {isLoading ? "Creating account..." : "Create account"}
               </Button>
             </form>
+
+            <div className="mt-4 flex items-center gap-2">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-[11px] text-muted-foreground">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full mt-4"
+              onClick={handleGoogleSignup}
+              disabled={isGoogleLoading}
+            >
+              {isGoogleLoading ? "Connecting..." : "Continue with Google"}
+            </Button>
 
             <div className="mt-6 text-center">
               <p className="text-xs text-muted-foreground">

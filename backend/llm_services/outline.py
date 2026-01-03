@@ -45,7 +45,7 @@ async def create_outline(dir: str, youtube_urls: List[str] = None) -> Optional[D
     
     # 2. CONFIGURATION
     # Adjust this based on your model's limits (e.g., 40k chars is roughly 10k tokens)
-    MAX_BATCH_CHARS = 40000 
+    MAX_BATCH_CHARS = 50000 
     
     current_batch_text = ""
     file_summaries = []

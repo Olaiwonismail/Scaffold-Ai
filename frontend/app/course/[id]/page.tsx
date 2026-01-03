@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { BookOpen, Upload, FileText, ChevronRight, Home, Trash2, Play, List, File, Menu, X } from "lucide-react"
-import { getCourseById, saveCourse, type Course, type Module, type UploadedFile } from "@/lib/storage"
+import { getCourseById, saveCourse, getUser, setCourses as cacheCourses, type Course, type Module, type UploadedFile } from "@/lib/storage"
 import { uploadPDFs } from "@/lib/api"
 import { LoadingScreen } from "@/components/loading-screen"
 import { Input } from "@/components/ui/input"
@@ -28,12 +28,38 @@ export default function CoursePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
-    const existingCourse = getCourseById(params.id as string)
-    if (!existingCourse) {
+    const loadCourse = async () => {
+      const existingCourse = getCourseById(params.id as string)
+      if (existingCourse) {
+        setCourse(existingCourse)
+        return
+      }
+
+      const user = getUser()
+      if (!user?.uid) {
+        router.push("/login")
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/courses?uid=${user.uid}`)
+        if (response.ok) {
+          const data = await response.json()
+          cacheCourses(data.courses || [])
+          const refreshedCourse = getCourseById(params.id as string)
+          if (refreshedCourse) {
+            setCourse(refreshedCourse)
+            return
+          }
+        }
+      } catch (error) {
+        console.error("Failed to refresh courses", error)
+      }
+
       router.push("/dashboard")
-      return
     }
-    setCourse(existingCourse)
+
+    void loadCourse()
   }, [params.id, router])
 
   const handleFileUpload = useCallback(

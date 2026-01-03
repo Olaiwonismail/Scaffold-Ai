@@ -1,4 +1,5 @@
 export interface User {
+  uid: string
   id: string
   email: string
   name: string
@@ -104,6 +105,11 @@ const parseCourses = (): Course[] => {
 
 export const getCourses = (): Course[] => parseCourses()
 
+export const setCourses = (courses: Course[]) => {
+  if (typeof window === "undefined") return
+  localStorage.setItem(STORAGE_KEYS.COURSE, JSON.stringify(courses))
+}
+
 export const getCourseById = (id: string): Course | null => {
   return parseCourses().find((c) => c.id === id) || null
 }
@@ -124,17 +130,20 @@ export const saveCourse = (course: Course) => {
     courses.push(course)
   }
   localStorage.setItem(STORAGE_KEYS.COURSE, JSON.stringify(courses))
+  void syncCoursesToServer(courses)
 }
 
 export const deleteCourse = (id: string) => {
   if (typeof window === "undefined") return
   const filtered = parseCourses().filter((c) => c.id !== id)
   localStorage.setItem(STORAGE_KEYS.COURSE, JSON.stringify(filtered))
+  void syncCoursesToServer(filtered)
 }
 
 export const clearCourse = () => {
   if (typeof window !== "undefined") {
     localStorage.removeItem(STORAGE_KEYS.COURSE)
+    void syncCoursesToServer([])
   }
 }
 
@@ -186,6 +195,23 @@ export const getQuizCache = (): Record<string, Quiz> => {
     return data ? JSON.parse(data) : {}
   }
   return {}
+}
+
+// Persist courses to MongoDB via API; fire-and-forget to avoid blocking UI
+const syncCoursesToServer = async (courses: Course[]) => {
+  if (typeof window === "undefined") return
+  const user = getUser()
+  if (!user?.uid) return
+
+  try {
+    await fetch("/api/courses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid: user.uid, courses }),
+    })
+  } catch (error) {
+    console.error("Failed to sync courses", error)
+  }
 }
 
 // Generate unique ID
