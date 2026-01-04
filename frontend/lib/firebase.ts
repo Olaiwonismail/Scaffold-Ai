@@ -11,31 +11,7 @@ const firebaseConfig = {
 }
 
 // Only initialize when config is present to avoid runtime errors in CI
-// Mock firebase if API key is missing to allow build/dev to start without crashing immediately on imports
-const isMissingConfig = !process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
 
-let app: any;
-let auth: any;
-
-try {
-  if (isMissingConfig) {
-      console.warn("Firebase config missing, using mock auth")
-      // @ts-ignore
-      app = { name: "[DEFAULT]" }
-      // @ts-ignore
-      auth = {
-          currentUser: null,
-          onAuthStateChanged: (cb: any) => { cb(null); return () => {} },
-          signInWithEmailAndPassword: () => Promise.reject("Mock Auth: No config"),
-          signOut: () => Promise.resolve()
-      }
-  } else {
-      app = getApps().length ? getApp() : initializeApp(firebaseConfig)
-      auth = getAuth(app)
-  }
-} catch (e) {
-    console.error("Firebase init failed", e)
-}
-
-export { auth }
+export const auth = getAuth(app)
 export default app

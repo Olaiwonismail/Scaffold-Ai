@@ -149,7 +149,7 @@ export default function LearnPage() {
     }
 
     // Auth listener wrapper
-      const unsubscribe = auth.onAuthStateChanged(async (user: any) => {
+     const unsubscribe = auth.onAuthStateChanged(async (user) => {
         if (user) {
              const existingCourse = await getCourseById(user.uid, params.id as string)
              if (!existingCourse) {
