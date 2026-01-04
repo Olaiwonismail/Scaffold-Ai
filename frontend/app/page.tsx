@@ -111,18 +111,52 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Hero Image / Dashboard Preview */}
-          <div className="mt-20 relative mx-auto max-w-5xl">
-            <div className="rounded-xl border border-border bg-background/50 backdrop-blur-sm p-2 shadow-2xl lg:rounded-2xl ring-1 ring-white/10">
-              <div className="rounded-lg border border-border bg-background overflow-hidden aspect-[16/9] flex items-center justify-center text-muted-foreground relative">
-                 <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-accent/5"></div>
-                 <div className="z-10 text-center">
-                    <BrainCircuit className="h-16 w-16 mx-auto mb-4 text-primary/40" />
-                    <p>Dashboard Preview UI</p>
-                 </div>
-              </div>
-            </div>
-            <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-full bg-primary/10 blur-[100px]"></div>
+          {/* Hero Interaction Preview */}
+          <div className="mt-20 relative mx-auto max-w-4xl">
+             <div className="relative group">
+                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary to-accent opacity-30 blur group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
+                <div className="relative rounded-xl border border-border bg-white/80 dark:bg-black/80 backdrop-blur-xl p-8 shadow-2xl">
+
+                   {/* Simulated Chat Interface */}
+                   <div className="flex flex-col space-y-6">
+                      {/* User Query */}
+                      <div className="flex items-start gap-4 justify-end">
+                         <div className="bg-primary/10 text-primary-foreground text-sm md:text-base px-5 py-3 rounded-2xl rounded-tr-sm max-w-[80%] shadow-sm">
+                            <span className="text-foreground font-medium">Explain the concept of derivatives in simple terms.</span>
+                         </div>
+                         <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-muted-foreground">You</span>
+                         </div>
+                      </div>
+
+                      {/* AI Response */}
+                      <div className="flex items-start gap-4">
+                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center flex-shrink-0 text-white font-bold text-xs">
+                            P
+                         </div>
+                         <div className="space-y-4 max-w-[90%]">
+                            <div className="bg-muted/50 p-5 rounded-2xl rounded-tl-sm shadow-sm border border-border/50">
+                               <p className="text-foreground text-sm md:text-base leading-relaxed mb-3">
+                                  Think of a derivative as the <strong>instantaneous speed</strong> of a car at a specific moment, rather than its average speed over a whole trip.
+                               </p>
+                               <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
+                                  Mathematically, it measures how a function changes as its input changes. If you have a curve, the derivative is the <strong>slope of the tangent line</strong> at any point.
+                               </p>
+                            </div>
+
+                            {/* Math Card Attachment */}
+                            <div className="bg-card border border-border rounded-xl p-4 w-fit shadow-sm">
+                               <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-2">Key Formula</div>
+                               <div className="font-mono text-lg md:text-xl text-center px-4 py-2 bg-secondary/20 rounded-lg">
+                                  f'(x) = lim(h→0) [f(x+h) - f(x)] / h
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+
+                </div>
+             </div>
           </div>
         </div>
       </section>
@@ -153,20 +187,6 @@ export default function Home() {
               title="Interactive Quizzes"
               description="Test your knowledge with adaptive quizzes that focus on your weak points to ensure mastery."
             />
-          </div>
-        </div>
-      </section>
-
-      {/* Social Proof / Trust */}
-      <section className="py-24 bg-background">
-        <div className="container mx-auto px-4 text-center">
-          <h3 className="text-2xl font-semibold mb-12">Trusted by learners worldwide</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-             {/* Placeholders for logos */}
-             <div className="flex items-center justify-center font-bold text-xl">ACME Corp</div>
-             <div className="flex items-center justify-center font-bold text-xl">Globex</div>
-             <div className="flex items-center justify-center font-bold text-xl">Soylent</div>
-             <div className="flex items-center justify-center font-bold text-xl">Initech</div>
           </div>
         </div>
       </section>
