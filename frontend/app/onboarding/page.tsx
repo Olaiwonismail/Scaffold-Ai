@@ -22,19 +22,18 @@ export default function OnboardingPage() {
   const [uid, setUid] = useState<string | null>(null)
 
   useEffect(() => {
-    const cached = getUser()
-    if (cached) {
-      setAnalogy(cached.analogy || "")
-      setAdaptLevel([cached.adaptLevel || 5])
-      setUid(cached.uid)
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
         router.push("/signup")
         return
       }
       setUid(currentUser.uid)
+
+      const cached = await getUser(currentUser.uid)
+      if (cached) {
+        setAnalogy(cached.analogy || "")
+        setAdaptLevel([cached.adaptLevel || 5])
+      }
     })
 
     return () => unsubscribe()
@@ -45,13 +44,23 @@ export default function OnboardingPage() {
     setIsLoading(true)
 
     try {
-      const user = getUser()
-      if (!uid || !user) {
+      if (!uid) {
         router.push("/signup")
         return
       }
+      const user = await getUser(uid)
+      if (!user) {
+         // Handle case where user doesn't exist yet? Or create basic one
+      }
 
-      const updatedUser = { ...user, analogy, adaptLevel: adaptLevel[0], uid }
+      // If user is null, create a temporary partial user.
+      // In a real app, you might want to fetch the user details from auth or ensure the user exists first.
+      const updatedUser = {
+        ...(user || { id: uid, email: "", name: "", createdAt: new Date().toISOString() }),
+        analogy,
+        adaptLevel: adaptLevel[0],
+        uid
+      } as import("@/lib/storage").User
 
       await fetch("/api/users", {
         method: "PATCH",

@@ -31,43 +31,78 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
 
-  --radius: 1rem;
+  --radius: 0.75rem; /* Slightly tighter radius for a more pro look */
 }
 
-/* Keep your variable definitions. 
-  Tailwind v4 reads the values from here via the @theme mapping above.
-*/
 @layer base {
   :root {
-    --background: 260 20% 98%; /* Soft Porcelain #F7F5FB */
-    --foreground: 260 10% 20%;
+    /* Steve Jobs Aesthetic: Clean, High Contrast, Sophisticated */
 
+    /* Background: Pure White / Very Light Gray */
+    --background: 0 0% 100%;
+    --foreground: 240 4% 10%; /* Almost Black #19191B */
+
+    /* Card: White with shadow usually, but here just white */
     --card: 0 0% 100%;
-    --card-foreground: 260 10% 20%;
+    --card-foreground: 240 4% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 260 10% 20%;
+    --popover-foreground: 240 4% 10%;
 
-    --primary: 260 64% 86%; /* Dusty Lavender #C6B1F0 */
-    --primary-foreground: 260 40% 20%;
+    /* Primary: Apple Blue #0071E3 */
+    --primary: 210 100% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 75% 84%; /* Mist Blue #B9D7F5 */
-    --secondary-foreground: 210 40% 20%;
+    /* Secondary: Light Gray / Ghost buttons */
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 4% 10%;
 
-    --muted: 260 10% 94%;
-    --muted-foreground: 260 5% 45%;
+    /* Muted: Subtle text */
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 45%;
 
-    --accent: 28 100% 85%; /* Peach Glow #FFD8B5 */
-    --accent-foreground: 28 40% 20%;
+    /* Accent: A vibrant gradient or pop color (Purple/Indigo) */
+    --accent: 260 100% 65%; /* Vivid Purple */
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 260 20% 90%;
-    --input: 260 20% 90%;
-    --ring: 260 64% 86%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 210 100% 45%; /* Match Primary */
 
-    --radius: 1rem;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 240 4% 10%;
+    --foreground: 0 0% 100%;
+
+    --card: 240 4% 12%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 240 4% 12%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 210 100% 55%; /* Lighter blue for dark mode */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 4% 65%;
+
+    --accent: 260 100% 65%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 4% 20%;
+    --input: 240 4% 20%;
+    --ring: 210 100% 55%;
   }
 }
 
@@ -77,11 +112,12 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1; /* Better typography rendering */
   }
 
   button {
-    @apply transition-all duration-200;
+    @apply transition-all duration-200 active:scale-95; /* Add subtle tactile feedback */
   }
 }
 
@@ -167,14 +203,22 @@
 
 @layer components {
   .glass-effect {
-    @apply bg-card/40 backdrop-blur-md border border-border/30;
+    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-sm;
+  }
+
+  .dark .glass-effect {
+    @apply bg-black/70 border-white/10;
   }
 
   .soft-shadow {
-    @apply shadow-sm;
+    @apply shadow-lg shadow-black/5;
   }
 
   .gradient-bg {
-    @apply bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5;
+    @apply bg-gradient-to-tr from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-800;
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
   }
 }
