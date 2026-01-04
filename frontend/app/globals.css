@@ -67,7 +67,7 @@
     --input: 260 20% 90%;
     --ring: 260 64% 86%;
 
-    --radius: 1rem;
+    --radius: 1.5rem; /* Increased radius for softer look */
   }
 }
 
@@ -77,11 +77,11 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased selection:bg-primary/30;
   }
 
   button {
-    @apply transition-all duration-200;
+    @apply transition-all duration-300 ease-out;
   }
 }
 
@@ -97,13 +97,14 @@
   font-size: 1.125rem;
   line-height: 1.8;
   border: 1px solid var(--border);
+  box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
 }
 
 .math-inline {
   font-family: var(--font-mono);
   background: var(--muted);
   padding: 0.25rem 0.5rem;
-  border-radius: calc(var(--radius) - 4px);
+  border-radius: calc(var(--radius) - 8px);
   font-size: 0.95em;
   white-space: nowrap;
   border: 1px solid var(--border);
@@ -167,14 +168,32 @@
 
 @layer components {
   .glass-effect {
-    @apply bg-card/40 backdrop-blur-md border border-border/30;
+    @apply bg-white/60 backdrop-blur-xl border border-white/40 shadow-lg shadow-black/5;
+  }
+
+  .glass-panel {
+    @apply bg-white/40 backdrop-blur-md border border-white/30 shadow-sm;
   }
 
   .soft-shadow {
-    @apply shadow-sm;
+    @apply shadow-[0_8px_30px_rgb(0,0,0,0.04)];
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1;
   }
 
   .gradient-bg {
-    @apply bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5;
+    @apply bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-secondary/10;
   }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
 }

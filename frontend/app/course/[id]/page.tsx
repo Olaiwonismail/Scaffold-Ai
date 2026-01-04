@@ -4,13 +4,16 @@ import type React from "react"
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { BookOpen, Upload, FileText, ChevronRight, Home, Trash2, Play, List, File, Menu, X } from "lucide-react"
-import { getCourseById, saveCourse, getUser } from "@/lib/storage"
+import {
+  BookOpen, Upload, FileText, ChevronRight, Home, Trash2,
+  Play, List, File, Menu, X, CheckCircle2, Circle
+} from "lucide-react"
+import { getCourseById, saveCourse } from "@/lib/storage"
 import type { Course, Module, UploadedFile } from "@/lib/types"
 import { uploadPDFs } from "@/lib/api"
 import { LoadingScreen } from "@/components/loading-screen"
@@ -28,31 +31,9 @@ export default function CoursePage() {
   const [dragActive, setDragActive] = useState(false)
   const [urls, setUrls] = useState("")
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState("outline")
 
   useEffect(() => {
-    const loadCourse = async () => {
-      const currentUser = auth.currentUser
-      // We rely on auth state. If not ready, we might want to listen to onAuthStateChanged,
-      // but usually the user should be logged in to reach here.
-      // However, on refresh, auth.currentUser might be null initially.
-      // Let's assume the parent layout or context handles auth check or we check it here properly.
-
-      if (!currentUser) {
-         // Optionally wait or redirect.
-         // For robustness, let's use a small delay or check storage/auth listener if this was a real production app.
-         // Here, assuming dashboard redirects if not logged in.
-         return
-      }
-
-      const existingCourse = await getCourseById(currentUser.uid, params.id as string)
-      if (existingCourse) {
-        setCourse(existingCourse)
-      } else {
-        router.push("/dashboard")
-      }
-    }
-
-    // Add listener for auth state to be safe on refresh
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
         if (user) {
              const existingCourse = await getCourseById(user.uid, params.id as string)
@@ -65,7 +46,6 @@ export default function CoursePage() {
             router.push("/login")
         }
     })
-
     return () => unsubscribe()
   }, [params.id, router])
 
@@ -116,7 +96,7 @@ export default function CoursePage() {
         }))
 
         const updatedCourse: Course = {
-          ...course!, // course should be loaded by now
+          ...course!,
           files: [...(course?.files || []), ...newFiles],
           modules: [...(course?.modules || []), ...newModules],
         }
@@ -124,6 +104,7 @@ export default function CoursePage() {
         await saveCourse(currentUser.uid, updatedCourse)
         setCourse(updatedCourse)
         setUrls("")
+        setActiveTab("outline")
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to process files/URLs. Please try again."
         setUploadError(message)
@@ -184,313 +165,315 @@ export default function CoursePage() {
     <>
       {isProcessing && <LoadingScreen message="Analyzing your documents" />}
 
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background relative">
+         {/* Decorative Background */}
+        <div className="fixed top-0 right-0 -mr-20 -mt-20 w-[500px] h-[500px] rounded-full bg-primary/5 blur-3xl pointer-events-none" />
+        <div className="fixed bottom-0 left-0 -ml-20 -mb-20 w-[400px] h-[400px] rounded-full bg-secondary/10 blur-3xl pointer-events-none" />
+
         {/* Header */}
-        <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-          <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <Button variant="ghost" size="icon" onClick={() => router.push("/dashboard")} className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0">
-                <Home className="w-4 h-4" />
+        <header className="border-b border-white/20 bg-white/60 backdrop-blur-xl sticky top-0 z-40 shadow-sm">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push("/dashboard")}
+                className="h-10 w-10 rounded-xl hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Home className="w-5 h-5" />
               </Button>
-              <div className="min-w-0">
-                <h1 className="text-sm sm:text-base font-bold text-foreground truncate">{course.title}</h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">
-                  {course.modules.length} modules • {course.files.length} files
+              <div className="min-w-0 flex flex-col">
+                <h1 className="text-lg font-bold text-foreground truncate leading-tight">{course.title}</h1>
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                  {course.modules.length} modules
                 </p>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"
-            >
-              {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-            </Button>
+
+            <div className="flex items-center gap-2">
+               <div className="hidden sm:flex bg-secondary/20 rounded-lg p-1">
+                  <Button
+                    variant={activeTab === "outline" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setActiveTab("outline")}
+                    className={`text-xs ${activeTab === "outline" ? "shadow-sm bg-white text-primary" : "text-muted-foreground"}`}
+                  >
+                    Outline
+                  </Button>
+                  <Button
+                    variant={activeTab === "files" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setActiveTab("files")}
+                    className={`text-xs ${activeTab === "files" ? "shadow-sm bg-white text-primary" : "text-muted-foreground"}`}
+                  >
+                    Files
+                  </Button>
+               </div>
+
+               <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden h-10 w-10"
+              >
+                {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </Button>
+            </div>
           </div>
         </header>
 
-        {/* Main Content with Sidebar */}
-        <div className="flex relative min-h-[calc(100vh-4rem)]">
-          {/* Sidebar Overlay for Mobile */}
-          {sidebarOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-30 sm:hidden"
-              onClick={() => setSidebarOpen(false)}
-            />
-          )}
+        {/* Main Layout */}
+        <div className="container mx-auto px-4 py-8 flex items-start gap-8">
 
-          {/* Sidebar */}
-          <motion.aside
-            initial={{ x: "-100%" }}
-            animate={{ x: sidebarOpen ? 0 : "-100%" }}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className="w-56 border-r border-border/50 bg-card/50 backdrop-blur-sm absolute sm:static z-40 h-full sm:h-auto sm:translate-x-0"
-          >
-            <ScrollArea className="h-full">
-              <div className="p-4 space-y-6">
-                <div>
-                  <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-primary" />
-                    Course Info
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    {course?.modules.length || 0} modules • {course?.files.length || 0} files
-                  </p>
-                </div>
-              </div>
-            </ScrollArea>
-          </motion.aside>
+          {/* Sidebar (Desktop) / Mobile Drawer */}
+          <AnimatePresence>
+            {(sidebarOpen || (typeof window !== 'undefined' && window.innerWidth >= 1024)) && (
+               <motion.aside
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -20, opacity: 0 }}
+                className={`
+                  fixed inset-y-0 left-0 z-30 w-72 bg-white/80 backdrop-blur-xl border-r border-white/20 p-6 shadow-2xl lg:shadow-none lg:static lg:bg-transparent lg:border-none lg:w-80 lg:block
+                  ${sidebarOpen ? 'block' : 'hidden lg:block'}
+                `}
+               >
+                 <div className="space-y-8">
+                    <div className="space-y-4">
+                       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Stats</h3>
+                       <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-white/50 p-4 rounded-2xl border border-white/40">
+                             <div className="text-2xl font-bold text-primary">{course.modules.length}</div>
+                             <div className="text-xs text-muted-foreground">Modules</div>
+                          </div>
+                          <div className="bg-white/50 p-4 rounded-2xl border border-white/40">
+                             <div className="text-2xl font-bold text-accent">{course.files.length}</div>
+                             <div className="text-xs text-muted-foreground">Files</div>
+                          </div>
+                       </div>
+                    </div>
 
-          {/* Main Content */}
-          <main className="flex-1 w-full">
-            <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
-              <Tabs defaultValue="outline" className="space-y-4 sm:space-y-6">
-                <TabsList className="grid w-full max-w-md grid-cols-2">
-                  <TabsTrigger value="outline" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                    <List className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">Course </span>Outline
-                  </TabsTrigger>
-                  <TabsTrigger value="files" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                    <File className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">Uploaded </span>Files
-                  </TabsTrigger>
-                </TabsList>
+                    <div className="space-y-4">
+                       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Navigation</h3>
+                        <nav className="space-y-2">
+                           <Button
+                              variant={activeTab === "outline" ? "secondary" : "ghost"}
+                              className="w-full justify-start"
+                              onClick={() => { setActiveTab("outline"); setSidebarOpen(false); }}
+                           >
+                              <List className="w-4 h-4 mr-3" />
+                              Course Outline
+                           </Button>
+                           <Button
+                              variant={activeTab === "files" ? "secondary" : "ghost"}
+                              className="w-full justify-start"
+                              onClick={() => { setActiveTab("files"); setSidebarOpen(false); }}
+                           >
+                              <File className="w-4 h-4 mr-3" />
+                              Files & Resources
+                           </Button>
+                        </nav>
+                    </div>
+                 </div>
+               </motion.aside>
+            )}
+          </AnimatePresence>
 
-                {/* Outline Tab */}
-                <TabsContent value="outline" className="space-y-4 sm:space-y-6">
-                  {course && course.modules.length === 0 ? (
-                    <Card className="border-border/50 bg-card/30 border-dashed">
-                      <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12 px-4">
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-3 sm:mb-4">
-                          <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
-                        </div>
-                        <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1 sm:mb-2">Upload your study materials</h3>
-                        <p className="text-xs sm:text-sm text-muted-foreground text-center mb-4 max-w-sm">
-                          Upload PDF files to generate your course outline and start learning
-                        </p>
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            multiple
-                            accept=".pdf"
-                            className="hidden"
-                            onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-                          />
-                          <Button asChild className="text-xs sm:text-sm h-9 sm:h-10">
-                            <span>
-                              <Upload className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                              Upload PDFs
-                            </span>
-                          </Button>
-                        </label>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <div className="space-y-3 sm:space-y-4">
-                      {/* Summary */}
-                      <Card className="border-border/50 bg-card/50">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                            Course Summary
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-xs sm:text-sm text-muted-foreground">
-                            This course covers {course?.modules.length || 0} main topics, each broken down into submodules for
-                            easier learning. Click on any submodule to start learning.
-                          </p>
-                        </CardContent>
+          {/* Main Content Area */}
+          <main className="flex-1 w-full min-w-0">
+             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsContent value="outline" className="mt-0 space-y-8">
+                   {course.modules.length === 0 ? (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white/40 backdrop-blur-md rounded-3xl border border-white/60 p-12 text-center shadow-sm"
+                      >
+                         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Upload className="w-10 h-10 text-primary" />
+                         </div>
+                         <h2 className="text-2xl font-bold text-foreground mb-3">Let's build your course</h2>
+                         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+                            Upload your study materials (PDFs) and we'll generate a structured learning path for you.
+                         </p>
+                         <Button onClick={() => setActiveTab("files")} size="lg" className="shadow-lg shadow-primary/20">
+                            Go to Uploads
+                         </Button>
+                      </motion.div>
+                   ) : (
+                      <div className="relative">
+                         {/* Timeline Line */}
+                         <div className="absolute left-8 top-8 bottom-8 w-0.5 bg-gradient-to-b from-primary/30 to-transparent hidden md:block" />
+
+                         <div className="space-y-8">
+                            {course.modules.map((module, moduleIndex) => {
+                               const allCompleted = module.subModules.every((s) => s.completed)
+                               return (
+                                  <motion.div
+                                    key={module.title}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: moduleIndex * 0.1 }}
+                                    className="relative pl-0 md:pl-20"
+                                  >
+                                     {/* Timeline Node */}
+                                     <div className={`absolute left-5 top-6 w-6 h-6 rounded-full border-4 border-white shadow-sm z-10 hidden md:block transition-colors duration-500 ${
+                                        allCompleted ? "bg-green-500" : "bg-primary"
+                                     }`} />
+
+                                     <Card className={`overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-300 ${
+                                        allCompleted ? "bg-gradient-to-br from-green-50/50 to-white" : "bg-white/60 backdrop-blur-md"
+                                     }`}>
+                                        <CardHeader className="border-b border-black/5 pb-4 bg-white/40">
+                                           <div className="flex items-start justify-between gap-4">
+                                              <div>
+                                                 <div className="text-xs font-bold text-primary mb-1 uppercase tracking-wider">Module {moduleIndex + 1}</div>
+                                                 <CardTitle className="text-lg md:text-xl text-foreground">{module.title}</CardTitle>
+                                              </div>
+                                              {allCompleted && (
+                                                <div className="bg-green-100 text-green-700 p-1.5 rounded-full">
+                                                   <CheckCircle2 className="w-5 h-5" />
+                                                </div>
+                                              )}
+                                           </div>
+                                           <CardDescription>{module.summary}</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="pt-4">
+                                           <div className="space-y-2">
+                                              {module.subModules.map((subModule, subIndex) => (
+                                                 <motion.div
+                                                   key={subModule.title}
+                                                   whileHover={{ x: 4 }}
+                                                   className="group"
+                                                 >
+                                                    <button
+                                                      onClick={() => handleStartLearning(moduleIndex, subIndex)}
+                                                      className={`w-full flex items-center gap-4 p-3 rounded-xl text-left transition-all ${
+                                                         subModule.completed
+                                                            ? "bg-green-50/50 hover:bg-green-50 text-green-800"
+                                                            : "bg-white/50 hover:bg-white text-foreground hover:shadow-sm"
+                                                      }`}
+                                                    >
+                                                       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
+                                                          subModule.completed
+                                                             ? "bg-green-200 text-green-700"
+                                                             : "bg-secondary/30 text-secondary-foreground group-hover:bg-primary group-hover:text-white"
+                                                       }`}>
+                                                          {subModule.completed ? <CheckCircle2 className="w-4 h-4" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+                                                       </div>
+                                                       <span className="flex-1 text-sm font-medium">{subModule.title}</span>
+                                                       <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    </button>
+                                                 </motion.div>
+                                              ))}
+                                           </div>
+                                        </CardContent>
+                                     </Card>
+                                  </motion.div>
+                               )
+                            })}
+                         </div>
+                      </div>
+                   )}
+                </TabsContent>
+
+                <TabsContent value="files" className="mt-0">
+                   <div className="grid gap-8">
+                      <Card className="border-dashed border-2 border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors">
+                         <CardContent className="flex flex-col items-center justify-center py-12">
+                            <div
+                              onDragEnter={handleDrag}
+                              onDragLeave={handleDrag}
+                              onDragOver={handleDrag}
+                              onDrop={handleDrop}
+                              className={`w-full text-center space-y-4 ${dragActive ? "opacity-50" : ""}`}
+                            >
+                               <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto">
+                                  <Upload className="w-8 h-8 text-primary" />
+                               </div>
+                               <div>
+                                  <h3 className="text-lg font-semibold text-foreground">Upload Documents</h3>
+                                  <p className="text-sm text-muted-foreground mt-1">Drag & drop PDFs here or click to browse</p>
+                               </div>
+
+                               <label className="block">
+                                  <input
+                                    type="file"
+                                    multiple
+                                    accept=".pdf"
+                                    className="hidden"
+                                    onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                                    disabled={isUploading}
+                                  />
+                                  <Button variant="secondary" disabled={isUploading} className="pointer-events-none">
+                                     {isUploading ? "Uploading..." : "Select Files"}
+                                  </Button>
+                               </label>
+                            </div>
+                         </CardContent>
                       </Card>
 
-                      {/* Modules */}
-                      <div className="space-y-3 sm:space-y-4">
-                        {course?.modules.map((module, moduleIndex) => {
-                          const allCompleted = module.subModules.every((s) => s.completed)
-                          return (
-                            <motion.div
-                              key={module.title}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: moduleIndex * 0.1 }}
+                      <div className="bg-white/60 backdrop-blur-md rounded-2xl border border-white/40 p-6 shadow-sm">
+                         <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                            <span className="w-1 h-4 bg-accent rounded-full"/>
+                            Or Import from URL
+                         </h3>
+                         <div className="flex gap-2">
+                            <Input
+                               placeholder="e.g., YouTube video URL..."
+                               value={urls}
+                               onChange={(e) => setUrls(e.target.value)}
+                               disabled={isUploading}
+                               className="bg-white/80"
+                            />
+                            <Button
+                               onClick={() => handleFileUpload([], urls.split(",").map((u) => u.trim()).filter((u) => u))}
+                               disabled={isUploading || !urls.trim()}
                             >
-                              <Card className={`border-border/50 bg-card/50 ${allCompleted ? "border-success/50" : ""}`}>
-                                <CardHeader>
-                                  <div className="flex items-center gap-2 sm:gap-3">
-                                    <div
-                                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                                        allCompleted ? "bg-success/10" : "bg-primary/10"
-                                      }`}
-                                    >
-                                      <span className={`font-bold text-xs sm:text-sm ${allCompleted ? "text-success" : "text-primary"}`}>
-                                        {moduleIndex + 1}
-                                      </span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <CardTitle className={`text-sm sm:text-lg ${allCompleted ? "text-success" : ""}`}>
-                                        {module.title}
-                                      </CardTitle>
-                                      <CardDescription className="text-xs sm:text-sm">{module.summary}</CardDescription>
-                                    </div>
-                                    {allCompleted && (
-                                      <span className="text-xs font-medium text-success bg-success/10 px-2 py-1 rounded-full flex-shrink-0">
-                                        Done
-                                      </span>
-                                    )}
-                                  </div>
-                                </CardHeader>
-                                <CardContent>
-                                  <div className="space-y-1 sm:space-y-2">
-                                    {module.subModules.map((subModule, subIndex) => (
-                                      <motion.button
-                                        key={subModule.title}
-                                        whileHover={{ x: 4 }}
-                                        onClick={() => handleStartLearning(moduleIndex, subIndex)}
-                                        className={`w-full flex items-center justify-between p-2 sm:p-3 rounded-lg transition-colors ${
-                                          subModule.completed
-                                            ? "bg-success/10 hover:bg-success/20"
-                                            : "bg-secondary/50 hover:bg-secondary"
-                                        }`}
-                                      >
-                                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                                          <div
-                                            className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 font-medium ${
-                                              subModule.completed
-                                                ? "bg-success text-success-foreground"
-                                                : "bg-muted text-muted-foreground"
-                                            }`}
-                                          >
-                                            {subIndex + 1}
-                                          </div>
-                                          <span
-                                            className={`text-xs sm:text-sm truncate ${subModule.completed ? "text-success font-medium" : "text-foreground"}`}
-                                          >
-                                            {subModule.title}
-                                          </span>
-                                        </div>
-                                        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                                          {subModule.completed ? (
-                                            <span className="text-xs text-success">Done</span>
-                                          ) : (
-                                            <Play className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
-                                          )}
-                                          <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
-                                        </div>
-                                      </motion.button>
-                                    ))}
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </motion.div>
-                          )
-                        })}
+                               Import
+                            </Button>
+                         </div>
                       </div>
-                    </div>
-                  )}
-                </TabsContent>
 
-                {/* Files Tab */}
-                <TabsContent value="files" className="space-y-4 sm:space-y-6">
-                  <div
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
-                    className={`border-2 border-dashed rounded-xl p-4 sm:p-8 text-center transition-colors ${
-                      dragActive ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/50"
-                    }`}
-                  >
-                    <Upload className={`w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-4 ${dragActive ? "text-primary" : "text-muted-foreground"}`} />
-                    <p className="text-sm sm:text-base text-foreground font-medium mb-1 sm:mb-2">Drag and drop PDF files here</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">or</p>
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        multiple
-                        accept=".pdf"
-                        className="hidden"
-                        onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-                        disabled={isUploading}
-                      />
-                      <Button variant="secondary" disabled={isUploading} className="text-xs sm:text-sm h-9 sm:h-10">
-                        {isUploading ? "Uploading..." : "Browse Files"}
-                      </Button>
-                    </label>
-                    <p className="text-xs text-muted-foreground mt-2 sm:mt-4">PDF files only. No size limits.</p>
-                  </div>
+                      {uploadError && (
+                         <motion.div
+                           initial={{ opacity: 0, height: 0 }}
+                           animate={{ opacity: 1, height: "auto" }}
+                           className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 text-sm text-destructive flex items-center gap-2"
+                         >
+                            <X className="w-4 h-4" />
+                            {uploadError}
+                         </motion.div>
+                      )}
 
-                  {/* New URL Input Section */}
-                  <div className="space-y-4">
-                    <Label htmlFor="urls">Or provide URLs (e.g., YouTube links, comma-separated)</Label>
-                    <Input
-                      id="urls"
-                      type="text"
-                      placeholder="https://example.com/video1, https://example.com/video2"
-                      value={urls}
-                      onChange={(e) => setUrls(e.target.value)}
-                      disabled={isUploading}
-                    />
-                    <Button
-                      onClick={() => handleFileUpload([], urls.split(",").map((u) => u.trim()).filter((u) => u))}
-                      disabled={isUploading || !urls.trim()}
-                      variant="outline"
-                    >
-                      Process URLs
-                    </Button>
-                  </div>
-
-                  {uploadError && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-sm text-destructive"
-                    >
-                      {uploadError}
-                    </motion.div>
-                  )}
-
-                  {course && course.files.length > 0 && (
-                    <Card className="border-border/50 bg-card/50">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Uploaded Files</CardTitle>
-                        <CardDescription>
-                          {course.files.length} file{course.files.length !== 1 ? "s" : ""} uploaded
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <ScrollArea className="h-[300px]">
-                          <div className="space-y-2">
-                            {course.files.map((file) => (
-                              <div
-                                key={file.name}
-                                className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <FileText className="w-5 h-5 text-primary" />
-                                  <div>
-                                    <p className="text-sm font-medium text-foreground truncate max-w-[200px]">
-                                      {file.name}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                      {course.files.length > 0 && (
+                         <div className="bg-white/60 backdrop-blur-md rounded-2xl border border-white/40 shadow-sm overflow-hidden">
+                            <div className="p-4 border-b border-black/5 bg-white/40">
+                               <h3 className="font-semibold text-foreground">Uploaded Resources ({course.files.length})</h3>
+                            </div>
+                            <div className="divide-y divide-black/5">
+                               {course.files.map((file) => (
+                                  <div key={file.name} className="flex items-center justify-between p-4 hover:bg-white/50 transition-colors">
+                                     <div className="flex items-center gap-4 overflow-hidden">
+                                        <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center text-red-500 flex-shrink-0">
+                                           <FileText className="w-5 h-5" />
+                                        </div>
+                                        <div className="min-w-0">
+                                           <p className="font-medium text-sm text-foreground truncate">{file.name}</p>
+                                           <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                                        </div>
+                                     </div>
+                                     <Button variant="ghost" size="icon" onClick={() => handleDeleteFile(file.name)} className="text-muted-foreground hover:text-destructive">
+                                        <Trash2 className="w-4 h-4" />
+                                     </Button>
                                   </div>
-                                </div>
-                                <Button variant="ghost" size="icon" onClick={() => handleDeleteFile(file.name)}>
-                                  <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </CardContent>
-                    </Card>
-                  )}
+                               ))}
+                            </div>
+                         </div>
+                      )}
+                   </div>
                 </TabsContent>
-              </Tabs>
-            </div>
+             </Tabs>
           </main>
         </div>
       </div>
