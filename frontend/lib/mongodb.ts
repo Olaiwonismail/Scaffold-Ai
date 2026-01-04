@@ -1,11 +1,7 @@
 import { MongoClient } from "mongodb"
 
-const uri = process.env.MONGODB_URI
+const uri = process.env.MONGODB_URI || "mongodb://localhost:27017"
 const dbName = process.env.MONGODB_DB || "scaffold_ai"
-
-if (!uri) {
-  throw new Error("MONGODB_URI is not set")
-}
 
 let cachedClient: MongoClient | null = null
 
@@ -16,7 +12,7 @@ export async function getMongoClient() {
   return cachedClient
 }
 
-export async function getCollection<T>(name: string) {
+export async function getCollection<T extends import("mongodb").Document>(name: string) {
   const client = await getMongoClient()
   return client.db(dbName).collection<T>(name)
 }

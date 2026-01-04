@@ -22,19 +22,18 @@ export default function OnboardingPage() {
   const [uid, setUid] = useState<string | null>(null)
 
   useEffect(() => {
-    const cached = getUser()
-    if (cached) {
-      setAnalogy(cached.analogy || "")
-      setAdaptLevel([cached.adaptLevel || 5])
-      setUid(cached.uid)
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
         router.push("/signup")
         return
       }
       setUid(currentUser.uid)
+
+      const cached = await getUser(currentUser.uid)
+      if (cached) {
+        setAnalogy(cached.analogy || "")
+        setAdaptLevel([cached.adaptLevel || 5])
+      }
     })
 
     return () => unsubscribe()
@@ -45,10 +44,15 @@ export default function OnboardingPage() {
     setIsLoading(true)
 
     try {
-      const user = getUser()
-      if (!uid || !user) {
+      if (!uid) {
         router.push("/signup")
         return
+      }
+      const user = await getUser(uid)
+      if (!user) {
+         // Should ideally create one if missing
+         router.push("/signup")
+         return
       }
 
       const updatedUser = { ...user, analogy, adaptLevel: adaptLevel[0], uid }
