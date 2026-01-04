@@ -53,7 +53,7 @@ export default function CoursePage() {
     }
 
     // Add listener for auth state to be safe on refresh
-     const unsubscribe = auth.onAuthStateChanged(async (user: any) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
         if (user) {
              const existingCourse = await getCourseById(user.uid, params.id as string)
              if (existingCourse) {
