@@ -100,7 +100,7 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-secondary mb-4">
             <BookOpen className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-3xl font-semibold text-foreground">Scaffold AI</h1>
+          <h1 className="text-3xl font-semibold text-foreground">StudyLabs</h1>
           <p className="text-sm text-muted-foreground mt-2">Learn smarter with AI</p>
         </Link>
 

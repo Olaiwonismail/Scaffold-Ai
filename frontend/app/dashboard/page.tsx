@@ -128,7 +128,7 @@ export default function DashboardPage() {
               <BookOpen className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-semibold text-foreground">Scaffold AI</h1>
+              <h1 className="font-semibold text-foreground">StudyLabs</h1>
               <p className="text-xs text-muted-foreground">Learning Hub</p>
             </div>
           </div>

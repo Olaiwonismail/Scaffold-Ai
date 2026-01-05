@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" })
 
 export const metadata: Metadata = {
-  title: "Scaffold AI - Personalized Learning",
+  title: "StudyLabs - Personalized Learning",
   description:
     "A study tool that actually gets to know you. Upload your materials and learn with AI-powered personalization.",
   generator: "v0.app",

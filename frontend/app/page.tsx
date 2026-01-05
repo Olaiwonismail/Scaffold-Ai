@@ -120,7 +120,7 @@ export default function LandingPage() {
               <BookOpen className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-foreground text-lg">Scaffold AI</h1>
+              <h1 className="font-bold text-foreground text-lg">StudyLabs</h1>
               <p className="text-[10px] text-muted-foreground -mt-0.5">Learn Smarter</p>
             </div>
           </div>
@@ -333,10 +333,10 @@ export default function LandingPage() {
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <BookOpen className="w-4 h-4 text-white" />
               </div>
-              <span className="font-semibold text-foreground">Scaffold AI</span>
+              <span className="font-semibold text-foreground">StudyLabs</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2026 Scaffold AI. All rights reserved.
+              © 2026 StudyLabs. All rights reserved.
             </p>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <Link href="#" className="hover:text-foreground transition-colors">Privacy</Link>

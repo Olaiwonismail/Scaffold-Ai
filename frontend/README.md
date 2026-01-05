@@ -1,4 +1,4 @@
-# Scaffold AI Frontend
+# StudyLabs Frontend
 
 A beautifully designed, personalized learning platform with a simple interface and pastel color scheme.
 
