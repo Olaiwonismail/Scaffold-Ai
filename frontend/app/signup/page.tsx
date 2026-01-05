@@ -114,13 +114,13 @@ export default function SignupPage() {
         transition={{ duration: 0.4 }}
         className="w-full max-w-sm"
       >
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-primary/10 mb-4">
-            <BookOpen className="w-6 h-6 text-primary" />
+        <Link href="/" className="block text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-secondary mb-4">
+            <BookOpen className="w-6 h-6 text-white" />
           </div>
           <h1 className="text-3xl font-semibold text-foreground">Get Started</h1>
           <p className="text-sm text-muted-foreground mt-2">Create your account to begin learning</p>
-        </div>
+        </Link>
 
         <Card className="border-border/40 shadow-sm">
           <CardHeader className="space-y-1 pb-4">

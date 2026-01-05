@@ -85,85 +85,7 @@
   }
 }
 
-/* Enhanced math styling for LaTeX rendering */
-.math-display {
-  font-family: var(--font-mono);
-  background: var(--muted);
-  padding: 1.5rem;
-  border-radius: var(--radius);
-  margin: 1.5em 0;
-  overflow-x: auto;
-  text-align: center;
-  font-size: 1.125rem;
-  line-height: 1.8;
-  border: 1px solid var(--border);
-}
-
-.math-inline {
-  font-family: var(--font-mono);
-  background: var(--muted);
-  padding: 0.25rem 0.5rem;
-  border-radius: calc(var(--radius) - 4px);
-  font-size: 0.95em;
-  white-space: nowrap;
-  border: 1px solid var(--border);
-}
-
-/* Fraction styling */
-.frac {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  vertical-align: middle;
-  margin: 0 0.25em;
-}
-
-.frac-num, .frac-den {
-  display: block;
-  text-align: center;
-  padding: 0 0.25em;
-}
-
-.frac-line {
-  width: 100%;
-  height: 1px;
-  background: currentColor;
-  margin: 2px 0;
-}
-
-/* Square root styling */
-.sqrt {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 0.25em;
-}
-
-.sqrt-content {
-  border-top: 1px solid currentColor;
-  padding: 0 0.25em;
-  margin-left: 0.1em;
-}
-
-/* Big operators */
-.big-op {
-  font-size: 1.5em;
-  vertical-align: middle;
-  line-height: 0;
-  margin: 0 0.1em;
-}
-
-/* Ensure proper spacing in math content */
-.latex-content sup {
-  font-size: 0.75em;
-  vertical-align: super;
-  line-height: 0;
-}
-
-.latex-content sub {
-  font-size: 0.75em;
-  vertical-align: sub;
-  line-height: 0;
-}
+/* Old custom math styling - now using KaTeX instead */
 
 @layer components {
   .glass-effect {
@@ -177,4 +99,92 @@
   .gradient-bg {
     @apply bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5;
   }
+}
+
+/* KaTeX overrides for better integration */
+.katex {
+  font-size: 1em !important;
+}
+
+.katex-display {
+  margin: 1em 0 !important;
+  padding: 1rem;
+  background: hsl(var(--muted) / 0.5);
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+.katex-display > .katex {
+  text-align: center;
+}
+
+/* Prose overrides for chat bubbles */
+.latex-content.prose {
+  font-size: inherit;
+  line-height: 1.6;
+}
+
+.latex-content.prose p:first-child {
+  margin-top: 0;
+}
+
+.latex-content.prose p:last-child {
+  margin-bottom: 0;
+}
+
+/* Success color utilities */
+:root {
+  --success: 142 76% 36%;
+  --success-foreground: 0 0% 98%;
+}
+
+.text-success {
+  color: hsl(var(--success));
+}
+
+.bg-success {
+  background-color: hsl(var(--success));
+}
+
+.text-success-foreground {
+  color: hsl(var(--success-foreground));
+}
+
+.bg-success\/10 {
+  background-color: hsl(var(--success) / 0.1);
+}
+
+.bg-success\/20 {
+  background-color: hsl(var(--success) / 0.2);
+}
+
+.border-success\/50 {
+  border-color: hsl(var(--success) / 0.5);
+}
+
+/* Error/destructive color utilities */
+.text-error {
+  color: hsl(var(--destructive));
+}
+
+.bg-error\/10 {
+  background-color: hsl(var(--destructive) / 0.1);
+}
+
+/* Warning color */
+:root {
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 98%;
+}
+
+.text-warning {
+  color: hsl(var(--warning));
+}
+
+.bg-warning {
+  background-color: hsl(var(--warning));
+}
+
+.bg-warning\/10 {
+  background-color: hsl(var(--warning) / 0.1);
 }

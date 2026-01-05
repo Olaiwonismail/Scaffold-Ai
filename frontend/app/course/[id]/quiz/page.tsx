@@ -6,13 +6,18 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Home, CheckCircle, XCircle, RotateCcw, BookOpen, Trophy, ArrowRight } from "lucide-react"
+import { Home, CheckCircle, XCircle, RotateCcw, BookOpen, Trophy, ArrowRight, Settings, Layers, FileText } from "lucide-react"
 import { getCourseById, saveCourse, getUser } from "@/lib/storage"
 import type { Course, Quiz } from "@/lib/types"
 import { getQuiz } from "@/lib/api"
 import { LoadingScreen } from "@/components/loading-screen"
 import { LatexRenderer } from "@/components/latex-renderer"
 import { auth } from "@/lib/firebase"
+
+type QuizMode = "setup" | "quiz" | "results"
+type QuizScope = "submodule" | "module"
+
+const QUESTION_OPTIONS = [3, 5, 10, 15, 20]
 
 export default function QuizPage() {
   const router = useRouter()
@@ -23,105 +28,65 @@ export default function QuizPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
   const [answers, setAnswers] = useState<Record<number, string>>({})
-  const [showResults, setShowResults] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [mode, setMode] = useState<QuizMode>("setup")
+  const [isLoading, setIsLoading] = useState(false)
   const [moduleIndex, setModuleIndex] = useState(0)
   const [subModuleIndex, setSubModuleIndex] = useState(0)
+  
+  // Quiz configuration state
+  const [quizScope, setQuizScope] = useState<QuizScope>("submodule")
+  const [questionCount, setQuestionCount] = useState(5)
 
-  const loadQuiz = useCallback(async (moduleIdx: number, subModuleIdx: number) => {
+  // Load course data on mount
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        const existingCourse = await getCourseById(user.uid, params.id as string)
+        if (!existingCourse) {
+          router.push("/dashboard")
+          return
+        }
+        setCourse(existingCourse)
+
+        const moduleParam = searchParams.get("module")
+        const subModuleParam = searchParams.get("submodule")
+        const moduleIdx = moduleParam ? Number.parseInt(moduleParam) : 0
+        const subModuleIdx = subModuleParam ? Number.parseInt(subModuleParam) : 0
+
+        setModuleIndex(moduleIdx)
+        setSubModuleIndex(subModuleIdx)
+      } else {
+        router.push("/login")
+      }
+    })
+
+    return () => unsubscribe()
+  }, [params.id, searchParams, router])
+
+  const startQuiz = async () => {
     const currentUser = auth.currentUser
-    if (!currentUser) return
-
-    const existingCourse = await getCourseById(currentUser.uid, params.id as string)
-    if (!existingCourse) return
-
-    const module = existingCourse.modules[moduleIdx]
-    if (!module) return
-
-    const subModule = module.subModules[subModuleIdx]
-    if (!subModule) return
-
-    // Check if quiz already exists in course
-    if (subModule.quiz) {
-       setQuiz(subModule.quiz)
-       setIsLoading(false)
-       setCourse(existingCourse)
-       return
-    }
+    if (!currentUser || !course) return
 
     setIsLoading(true)
+    setMode("quiz")
+
     try {
-      const response = await getQuiz(module.title, subModule.title, currentUser.uid)
+      const module = course.modules[moduleIndex]
+      const subModule = module?.subModules[subModuleIndex]
+
+      // Determine topic based on scope
+      const moduleTitle = module?.title || ""
+      const submoduleTitle = quizScope === "submodule" ? subModule?.title || "" : null
+
+      const response = await getQuiz(moduleTitle, submoduleTitle, currentUser.uid, questionCount)
       setQuiz(response)
-
-      // Save quiz to DB
-      const updatedCourse = { ...existingCourse }
-      updatedCourse.modules[moduleIdx].subModules[subModuleIdx].quiz = response
-      await saveCourse(currentUser.uid, updatedCourse)
-      setCourse(updatedCourse)
-
     } catch (error) {
       console.error("Failed to load quiz:", error)
       setQuiz(null)
     } finally {
       setIsLoading(false)
     }
-  }, [params.id])
-
-  useEffect(() => {
-    const hydrateCourse = async () => {
-      const currentUser = auth.currentUser
-      if (!currentUser) {
-          // Wait for auth or redirect
-          return
-      }
-
-      const existingCourse = await getCourseById(currentUser.uid, params.id as string)
-
-      if (!existingCourse) {
-        router.push("/dashboard")
-        return
-      }
-
-      setCourse(existingCourse)
-
-      const moduleParam = searchParams.get("module")
-      const subModuleParam = searchParams.get("submodule")
-
-      const moduleIdx = moduleParam ? Number.parseInt(moduleParam) : 0
-      const subModuleIdx = subModuleParam ? Number.parseInt(subModuleParam) : 0
-
-      setModuleIndex(moduleIdx)
-      setSubModuleIndex(subModuleIdx)
-      loadQuiz(moduleIdx, subModuleIdx)
-    }
-
-    // Auth listener wrapper
-     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-        if (user) {
-             const existingCourse = await getCourseById(user.uid, params.id as string)
-             if (!existingCourse) {
-                 router.push("/dashboard")
-                 return
-             }
-             setCourse(existingCourse)
-
-             const moduleParam = searchParams.get("module")
-             const subModuleParam = searchParams.get("submodule")
-             const moduleIdx = moduleParam ? Number.parseInt(moduleParam) : 0
-             const subModuleIdx = subModuleParam ? Number.parseInt(subModuleParam) : 0
-
-             setModuleIndex(moduleIdx)
-             setSubModuleIndex(subModuleIdx)
-             loadQuiz(moduleIdx, subModuleIdx)
-
-        } else {
-             router.push("/login")
-        }
-    })
-
-    return () => unsubscribe()
-  }, [params.id, searchParams, router, loadQuiz])
+  }
 
   const handleSelectAnswer = (answer: string) => {
     if (selectedAnswer) return // Already answered
@@ -136,9 +101,11 @@ export default function QuizPage() {
       setCurrentQuestionIndex(currentQuestionIndex + 1)
       setSelectedAnswer(null)
     } else {
-      // Mark submodule as complete
-      markSubModuleComplete()
-      setShowResults(true)
+      // Mark submodule as complete (only for submodule-level quizzes)
+      if (quizScope === "submodule") {
+        markSubModuleComplete()
+      }
+      setMode("results")
     }
   }
 
@@ -183,8 +150,8 @@ export default function QuizPage() {
     setCurrentQuestionIndex(0)
     setSelectedAnswer(null)
     setAnswers({})
-    setShowResults(false)
-    loadQuiz(moduleIndex, subModuleIndex)
+    setMode("setup")
+    setQuiz(null)
   }
 
   const handleBackToSlides = () => {
@@ -217,7 +184,7 @@ export default function QuizPage() {
 
   return (
     <>
-      {isLoading && <LoadingScreen message="Generating your quiz" />}
+      {isLoading && <LoadingScreen message={`Generating ${questionCount} quiz questions...`} />}
 
       <div className="min-h-screen bg-background">
         {/* Header */}
@@ -230,7 +197,9 @@ export default function QuizPage() {
               <div>
                 <h1 className="font-bold text-foreground">Quiz</h1>
                 <p className="text-xs text-muted-foreground">
-                  {currentModule?.title} - {currentSubModule?.title}
+                  {quizScope === "module" 
+                    ? `${currentModule?.title} (Full Module)` 
+                    : `${currentModule?.title} - ${currentSubModule?.title}`}
                 </p>
               </div>
             </div>
@@ -240,7 +209,103 @@ export default function QuizPage() {
         {/* Main Content */}
         <main className="container mx-auto px-4 py-8 max-w-2xl">
           <AnimatePresence mode="wait">
-            {showResults ? (
+            {/* Quiz Setup Screen */}
+            {mode === "setup" && (
+              <motion.div
+                key="setup"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <Card className="border-border/50 bg-card/50">
+                  <CardHeader className="text-center">
+                    <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Settings className="w-8 h-8 text-primary" />
+                    </div>
+                    <CardTitle className="text-xl sm:text-2xl">Configure Your Quiz</CardTitle>
+                    <CardDescription>
+                      Choose what to quiz yourself on and how many questions
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Quiz Scope Selection */}
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-foreground">Quiz Scope</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                          onClick={() => setQuizScope("submodule")}
+                          className={`p-4 rounded-lg border-2 transition-all text-left ${
+                            quizScope === "submodule"
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <FileText className={`w-5 h-5 ${quizScope === "submodule" ? "text-primary" : "text-muted-foreground"}`} />
+                            <span className="font-medium">Submodule</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Quiz on: {currentSubModule?.title}
+                          </p>
+                        </button>
+                        <button
+                          onClick={() => setQuizScope("module")}
+                          className={`p-4 rounded-lg border-2 transition-all text-left ${
+                            quizScope === "module"
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <Layers className={`w-5 h-5 ${quizScope === "module" ? "text-primary" : "text-muted-foreground"}`} />
+                            <span className="font-medium">Full Module</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Quiz on: {currentModule?.title} ({currentModule?.subModules.length} subtopics)
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Question Count Selection */}
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-foreground">Number of Questions</label>
+                      <div className="flex flex-wrap gap-2">
+                        {QUESTION_OPTIONS.map((count) => (
+                          <button
+                            key={count}
+                            onClick={() => setQuestionCount(count)}
+                            className={`px-4 py-2 rounded-lg border-2 font-medium transition-all ${
+                              questionCount === count
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border hover:border-primary/50"
+                            }`}
+                          >
+                            {count}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Start Button */}
+                    <div className="pt-4">
+                      <Button onClick={startQuiz} className="w-full" size="lg">
+                        <BookOpen className="w-5 h-5 mr-2" />
+                        Start Quiz ({questionCount} Questions)
+                      </Button>
+                    </div>
+
+                    {/* Back to Slides */}
+                    <Button variant="ghost" onClick={handleBackToSlides} className="w-full">
+                      Back to Learning
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Results Screen */}
+            {mode === "results" && (
               <motion.div
                 key="results"
                 initial={{ opacity: 0, y: 20 }}
@@ -321,7 +386,10 @@ export default function QuizPage() {
                   </CardContent>
                 </Card>
               </motion.div>
-            ) : (
+            )}
+
+            {/* Quiz Questions Screen */}
+            {mode === "quiz" && quiz && (
               <motion.div
                 key="quiz"
                 initial={{ opacity: 0, y: 20 }}

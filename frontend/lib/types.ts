@@ -6,6 +6,12 @@ export interface User {
   analogy: string // User's interests/hobbies for personalized learning
   adaptLevel: number // 1-10 slider value
   createdAt: string
+  // Profile fields
+  school?: string
+  country?: string
+  grade?: string // e.g., "High School", "Undergraduate", "Graduate", "Professional"
+  bio?: string
+  avatarUrl?: string
 }
 
 export interface Message {

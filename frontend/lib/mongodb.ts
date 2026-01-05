@@ -1,4 +1,4 @@
-import { MongoClient } from "mongodb"
+import { MongoClient, type Document } from "mongodb"
 
 const uri = process.env.MONGODB_URI
 const dbName = process.env.MONGODB_DB || "scaffold_ai"
@@ -10,13 +10,13 @@ if (!uri) {
 let cachedClient: MongoClient | null = null
 
 export async function getMongoClient() {
- if (cachedClient) return cachedClient
- const client = new MongoClient(uri)
- cachedClient = await client.connect()
- return cachedClient
+  if (cachedClient) return cachedClient
+  const client = new MongoClient(uri!)
+  cachedClient = await client.connect()
+  return cachedClient
 }
 
-export async function getCollection<T>(name: string) {
-  const client = await getMongoClient()
-  return client.db(dbName).collection<T>(name)
+export async function getCollection<T extends Document>(name: string) {
+  const client = await getMongoClient()
+  return client.db(dbName).collection<T>(name)
 }

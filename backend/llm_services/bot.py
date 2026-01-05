@@ -72,10 +72,13 @@ async def tutor(query: str, adapt: str, analogy: str, user_id: str):
     return raw
 
 
-async def quiz(query: str, user_id: str):
-    """Generate quiz using user-scoped context."""
+async def quiz(query: str, user_id: str, question_count: int = 5):
+    """Generate quiz using user-scoped context with configurable question count."""
+    # Append question count instruction to the query
+    enhanced_query = f"{query}\n\nIMPORTANT: Generate exactly {question_count} quiz questions."
+    
     result = quiz_agent.invoke(
-        {"messages": [{"role": "user", "content": query}], "user_id": user_id}
+        {"messages": [{"role": "user", "content": enhanced_query}], "user_id": user_id, "question_count": question_count}
     )
     msgs = result["messages"]
     return msgs[-1].content

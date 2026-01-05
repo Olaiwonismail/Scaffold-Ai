@@ -1,6 +1,10 @@
 "use client"
 
-import { useMemo } from "react"
+import ReactMarkdown from 'react-markdown'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
+import { useMemo } from 'react'
 
 interface LatexRendererProps {
   content: string
@@ -8,125 +12,102 @@ interface LatexRendererProps {
 }
 
 export function LatexRenderer({ content, className = "" }: LatexRendererProps) {
-  const renderedContent = useMemo(() => {
-    let processedContent = content
+  // Pre-process content to handle various math notations
+  const processedContent = useMemo(() => {
+    let processed = content
 
-    // Replace display math ($$...$$) with styled blocks
-    processedContent = processedContent.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
-      return `<div class="math-display">${formatMath(math.trim())}</div>`
-    })
+    // Handle escaped backslashes that might come from JSON
+    processed = processed.replace(/\\\\/g, '\\')
+    
+    // Convert \[ \] to $$ $$ for display math
+    processed = processed.replace(/\\\[/g, '$$')
+    processed = processed.replace(/\\\]/g, '$$')
+    
+    // Convert \( \) to $ $ for inline math
+    processed = processed.replace(/\\\(/g, '$')
+    processed = processed.replace(/\\\)/g, '$')
 
-    // Replace inline math ($...$) with styled spans
-    processedContent = processedContent.replace(/\$([^$\n]+?)\$/g, (_, math) => {
-      return `<span class="math-inline">${formatMath(math.trim())}</span>`
-    })
-
-    // Convert newlines to breaks for board content
-    processedContent = processedContent.replace(/\n/g, "<br/>")
-
-    // Convert bullet points
-    processedContent = processedContent.replace(/^- (.*)$/gm, "<li>$1</li>")
-    processedContent = processedContent.replace(/(<li>.*<\/li>)/gs, "<ul class='list-disc ml-4 my-2'>$1</ul>")
-
-    // Bold text with **
-    processedContent = processedContent.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-
-    // Italic text with *
-    processedContent = processedContent.replace(/\*([^*]+)\*/g, "<em>$1</em>")
-
-    return processedContent
+    return processed
   }, [content])
 
-  return <div className={`latex-content ${className}`} dangerouslySetInnerHTML={{ __html: renderedContent }} />
+  return (
+    <div className={`latex-content prose prose-sm dark:prose-invert max-w-none ${className}`}>
+      <ReactMarkdown
+        remarkPlugins={[remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={{
+          // Custom styling for various elements
+          p: ({ children }) => <p className="my-2 leading-relaxed">{children}</p>,
+          ul: ({ children }) => <ul className="my-2 ml-4 list-disc space-y-1">{children}</ul>,
+          ol: ({ children }) => <ol className="my-2 ml-4 list-decimal space-y-1">{children}</ol>,
+          li: ({ children }) => <li className="text-inherit">{children}</li>,
+          strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+          em: ({ children }) => <em className="italic">{children}</em>,
+          code: ({ children, className }) => {
+            const isInline = !className
+            return isInline ? (
+              <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>
+            ) : (
+              <code className={`block bg-muted p-3 rounded-lg text-sm font-mono overflow-x-auto ${className}`}>
+                {children}
+              </code>
+            )
+          },
+          pre: ({ children }) => (
+            <pre className="bg-muted p-4 rounded-lg overflow-x-auto my-3">{children}</pre>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-primary/50 pl-4 py-1 my-3 text-muted-foreground italic">
+              {children}
+            </blockquote>
+          ),
+          h1: ({ children }) => <h1 className="text-xl font-bold mt-4 mb-2">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-lg font-bold mt-3 mb-2">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-base font-semibold mt-2 mb-1">{children}</h3>,
+          a: ({ href, children }) => (
+            <a href={href} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+              {children}
+            </a>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-3">
+              <table className="min-w-full divide-y divide-border">{children}</table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="px-3 py-2 text-left text-sm font-semibold bg-muted">{children}</th>
+          ),
+          td: ({ children }) => (
+            <td className="px-3 py-2 text-sm border-t border-border">{children}</td>
+          ),
+        }}
+      >
+        {processedContent}
+      </ReactMarkdown>
+    </div>
+  )
 }
 
-// Enhanced math formatter with better symbol support
-function formatMath(math: string): string {
-  let formatted = math
-    // Fractions
-    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '<span class="frac"><span class="frac-num">$1</span><span class="frac-line"></span><span class="frac-den">$2</span></span>')
-    // Square roots
-    .replace(/\\sqrt\{([^}]*)\}/g, '<span class="sqrt">√<span class="sqrt-content">$1</span></span>')
-    // Summation
-    .replace(/\\sum/g, '<span class="big-op">Σ</span>')
-    .replace(/\\prod/g, '<span class="big-op">Π</span>')
-    .replace(/\\int/g, '<span class="big-op">∫</span>')
-    // Greek letters
-    .replace(/\\alpha/g, "α")
-    .replace(/\\beta/g, "β")
-    .replace(/\\gamma/g, "γ")
-    .replace(/\\Gamma/g, "Γ")
-    .replace(/\\delta/g, "δ")
-    .replace(/\\Delta/g, "Δ")
-    .replace(/\\epsilon/g, "ε")
-    .replace(/\\varepsilon/g, "ε")
-    .replace(/\\theta/g, "θ")
-    .replace(/\\Theta/g, "Θ")
-    .replace(/\\pi/g, "π")
-    .replace(/\\Pi/g, "Π")
-    .replace(/\\sigma/g, "σ")
-    .replace(/\\Sigma/g, "Σ")
-    .replace(/\\omega/g, "ω")
-    .replace(/\\Omega/g, "Ω")
-    .replace(/\\phi/g, "φ")
-    .replace(/\\Phi/g, "Φ")
-    .replace(/\\psi/g, "ψ")
-    .replace(/\\Psi/g, "Ψ")
-    .replace(/\\lambda/g, "λ")
-    .replace(/\\Lambda/g, "Λ")
-    .replace(/\\mu/g, "μ")
-    .replace(/\\nu/g, "ν")
-    .replace(/\\xi/g, "ξ")
-    .replace(/\\rho/g, "ρ")
-    .replace(/\\tau/g, "τ")
-    .replace(/\\chi/g, "χ")
-    .replace(/\\eta/g, "η")
-    .replace(/\\kappa/g, "κ")
-    .replace(/\\zeta/g, "ζ")
-    // Math operators and symbols
-    .replace(/\\infty/g, "∞")
-    .replace(/\\cdot/g, "·")
-    .replace(/\\times/g, "×")
-    .replace(/\\div/g, "÷")
-    .replace(/\\pm/g, "±")
-    .replace(/\\mp/g, "∓")
-    .replace(/\\leq/g, "≤")
-    .replace(/\\geq/g, "≥")
-    .replace(/\\neq/g, "≠")
-    .replace(/\\approx/g, "≈")
-    .replace(/\\equiv/g, "≡")
-    .replace(/\\sim/g, "∼")
-    .replace(/\\propto/g, "∝")
-    // Arrows
-    .replace(/\\rightarrow/g, "→")
-    .replace(/\\leftarrow/g, "←")
-    .replace(/\\Rightarrow/g, "⇒")
-    .replace(/\\Leftarrow/g, "⇐")
-    .replace(/\\leftrightarrow/g, "↔")
-    .replace(/\\Leftrightarrow/g, "⇔")
-    // Sets
-    .replace(/\\in/g, "∈")
-    .replace(/\\notin/g, "∉")
-    .replace(/\\subset/g, "⊂")
-    .replace(/\\supset/g, "⊃")
-    .replace(/\\subseteq/g, "⊆")
-    .replace(/\\supseteq/g, "⊇")
-    .replace(/\\cup/g, "∪")
-    .replace(/\\cap/g, "∩")
-    .replace(/\\emptyset/g, "∅")
-    .replace(/\\forall/g, "∀")
-    .replace(/\\exists/g, "∃")
-    // Superscripts with proper handling
-    .replace(/\^{([^}]*)}/g, "<sup>$1</sup>")
-    .replace(/\^(\w)/g, "<sup>$1</sup>")
-    // Subscripts with proper handling
-    .replace(/_{([^}]*)}/g, "<sub>$1</sub>")
-    .replace(/_(\w)/g, "<sub>$1</sub>")
-    // Remove any remaining LaTeX commands
-    .replace(/\\[a-zA-Z]+/g, "")
-    // Clean up extra spaces
-    .replace(/\s+/g, " ")
-    .trim()
+// Simplified inline math component for when full markdown isn't needed
+export function InlineMath({ children }: { children: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkMath]}
+      rehypePlugins={[rehypeKatex]}
+    >
+      {`$${children}$`}
+    </ReactMarkdown>
+  )
+}
 
-  return formatted
+// Display math component
+export function DisplayMath({ children }: { children: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkMath]}
+      rehypePlugins={[rehypeKatex]}
+    >
+      {`$$${children}$$`}
+    </ReactMarkdown>
+  )
 }

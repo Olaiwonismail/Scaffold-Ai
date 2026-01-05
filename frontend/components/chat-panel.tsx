@@ -113,11 +113,16 @@ export function ChatPanel({ initialMessages = [], onMessagesChange, userId }: Ch
                   </div>
                 )}
                 <div
-                  className={`max-w-[85%] p-3 rounded-lg text-sm ${
-                    message.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-foreground"
+                  className={`max-w-[85%] p-3 rounded-lg text-sm overflow-hidden ${
+                    message.role === "user" 
+                      ? "bg-primary text-primary-foreground" 
+                      : "bg-secondary/50 text-foreground"
                   }`}
                 >
-                  <LatexRenderer content={message.content} />
+                  <LatexRenderer 
+                    content={message.content} 
+                    className={message.role === "user" ? "[&_.katex]:text-primary-foreground" : ""}
+                  />
                 </div>
                 {message.role === "user" && (
                   <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">

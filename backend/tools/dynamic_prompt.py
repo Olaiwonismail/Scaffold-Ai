@@ -85,45 +85,48 @@ def get_quiz(request: ModelRequest) -> str:
     """Inject user-scoped context into state messages for quizzes."""
     last_query = request.state["messages"][-1].text
     user_id = request.state.get("user_id")
+    question_count = request.state.get("question_count", 5)
     
     if user_id:
-        retrieved_docs = search_for_user(last_query, user_id)
+        retrieved_docs = search_for_user(last_query, user_id, k=8)  # Get more docs for larger quizzes
     else:
         print("⚠️ Warning: No user_id provided, using unfiltered search")
         retrieved_docs = vector_store.similarity_search(last_query)
     
-    print(f"Retrieved {len(retrieved_docs)} docs for quiz, user: {user_id}")
+    print(f"Retrieved {len(retrieved_docs)} docs for quiz ({question_count} questions), user: {user_id}")
 
     docs_content = "\n\n".join(d.page_content for d in retrieved_docs)
 
     system_message = (
-        """
+        f"""
 Convert the user's notes into a set of quizzes.
 Output ONLY valid JSON matching the structure below.
 
 ### STRUCTURE:
-{
+{{
   "topic_title": "Topic Name",
   "flashcards": [
-    {
+    {{
       "question": "Question text",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "answer": "Correct option letter"
-    }
+    }}
   ]
-}
+}}
 
 ### CRITICAL MATH FORMATTING RULES:
 1. ALL math expressions MUST be wrapped in $$ for display or $ for inline
 2. ALWAYS double-escape backslashes: \\frac, \\sqrt, \\sum, etc.
-3. Example: "What is $$\\frac{1}{2} + \\frac{1}{3}$$?"
-4. Example inline: "If $x = 2$, what is $x^{2}$?"
+3. Example: "What is $$\\frac{{1}}{{2}} + \\frac{{1}}{{3}}$$?"
+4. Example inline: "If $x = 2$, what is $x^{{2}}$?"
 5. Use proper LaTeX for fractions, roots, powers, Greek letters
 
 ### OTHER RULES:
-1. Generate exactly 3 MCQs
+1. Generate exactly {question_count} MCQs
 2. Each MCQ must have 4 options
 3. Use Markdown for text formatting if needed
+4. Make questions varied in difficulty
+5. Cover different aspects of the topic
 """
         f"\n\nContext:\n{docs_content}"
     )

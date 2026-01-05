@@ -9,6 +9,12 @@ type UserDoc = {
   adaptLevel?: number
   createdAt: string
   updatedAt: string
+  // Profile fields
+  school?: string
+  country?: string
+  grade?: string
+  bio?: string
+  avatarUrl?: string
 }
 
 export async function GET(request: NextRequest) {
@@ -28,7 +34,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { uid, email, name, analogy = "", adaptLevel = 5 } = body
+  const { uid, email, name, analogy = "", adaptLevel = 5, school, country, grade, bio } = body
 
   if (!uid || !email || !name) {
     return NextResponse.json({ error: "uid, email, and name are required" }, { status: 400 })
@@ -39,7 +45,7 @@ export async function POST(request: NextRequest) {
 
   await users.updateOne(
     { uid },
-    { $set: { uid, email, name, analogy, adaptLevel, updatedAt: now }, $setOnInsert: { createdAt: now } },
+    { $set: { uid, email, name, analogy, adaptLevel, school, country, grade, bio, updatedAt: now }, $setOnInsert: { createdAt: now } },
     { upsert: true },
   )
 
@@ -49,7 +55,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const body = await request.json()
-  const { uid, analogy, adaptLevel, name } = body
+  const { uid, analogy, adaptLevel, name, school, country, grade, bio } = body
 
   if (!uid) {
     return NextResponse.json({ error: "uid is required" }, { status: 400 })
@@ -61,6 +67,10 @@ export async function PATCH(request: NextRequest) {
   if (typeof analogy === "string") update.analogy = analogy
   if (typeof adaptLevel === "number") update.adaptLevel = adaptLevel
   if (typeof name === "string") update.name = name
+  if (typeof school === "string") update.school = school
+  if (typeof country === "string") update.country = country
+  if (typeof grade === "string") update.grade = grade
+  if (typeof bio === "string") update.bio = bio
 
   await users.updateOne({ uid }, { $set: update })
   const saved = await users.findOne({ uid })

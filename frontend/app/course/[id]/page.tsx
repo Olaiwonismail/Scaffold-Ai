@@ -9,13 +9,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { BookOpen, Upload, FileText, ChevronRight, Home, Trash2, Play, List, File, Menu, X, Sparkles } from "lucide-react"
+import { BookOpen, Upload, FileText, ChevronRight, Home, Trash2, Play, List, File, Menu, X, Sparkles, GraduationCap, Plus } from "lucide-react"
 import { getCourseById, saveCourse, getUser } from "@/lib/storage"
 import type { Course, Module, UploadedFile } from "@/lib/types"
 import { uploadPDFs } from "@/lib/api"
 import { LoadingScreen } from "@/components/loading-screen"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { UploadDialog } from "@/components/upload-dialog"
 import { auth } from "@/lib/firebase"
 
 export default function CoursePage() {
@@ -24,23 +23,14 @@ export default function CoursePage() {
   const [course, setCourse] = useState<Course | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [uploadError, setUploadError] = useState("")
-  const [dragActive, setDragActive] = useState(false)
-  const [urls, setUrls] = useState("")
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showNewContentBanner, setShowNewContentBanner] = useState(true)
 
   useEffect(() => {
     const loadCourse = async () => {
       const currentUser = auth.currentUser
-      // We rely on auth state. If not ready, we might want to listen to onAuthStateChanged,
-      // but usually the user should be logged in to reach here.
-      // However, on refresh, auth.currentUser might be null initially.
-      // Let's assume the parent layout or context handles auth check or we check it here properly.
-
       if (!currentUser) {
-         // Optionally wait or redirect.
-         // For robustness, let's use a small delay or check storage/auth listener if this was a real production app.
-         // Here, assuming dashboard redirects if not logged in.
          return
       }
 
@@ -69,35 +59,19 @@ export default function CoursePage() {
     return () => unsubscribe()
   }, [params.id, router])
 
-  const handleFileUpload = useCallback(
-    async (files: FileList | File[], providedUrls?: string[]) => {
+  const handleUploadConfirm = useCallback(
+    async (files: File[], urls: string[]) => {
       const currentUser = auth.currentUser
-      if (!currentUser) return
-
-      setUploadError("")
-      const fileArray = Array.from(files)
-      const urlArray = providedUrls || (urls ? urls.split(",").map((u) => u.trim()).filter((u) => u) : [])
-
-      if (fileArray.length > 0) {
-        const nonPdfFiles = fileArray.filter((f) => f.type !== "application/pdf")
-        if (nonPdfFiles.length > 0) {
-          setUploadError("Only PDF files are supported.")
-          return
-        }
-      }
-
-      if (fileArray.length === 0 && urlArray.length === 0) {
-        setUploadError("Please provide at least one file or URL.")
-        return
-      }
+      if (!currentUser || !course) return
 
       setIsUploading(true)
       setIsProcessing(true)
+      setUploadDialogOpen(false)
 
       try {
-        const response = await uploadPDFs(fileArray, urlArray, currentUser.uid)
+        const response = await uploadPDFs(files, urls, currentUser.uid)
 
-        const newFiles: UploadedFile[] = fileArray.map((f) => ({
+        const newFiles: UploadedFile[] = files.map((f) => ({
           name: f.name,
           size: f.size,
           uploadedAt: new Date().toISOString(),
@@ -121,46 +95,21 @@ export default function CoursePage() {
         }))
 
         const updatedCourse: Course = {
-          ...course!, // course should be loaded by now
-          files: [...(course?.files || []), ...newFiles],
-          modules: [...(course?.modules || []), ...newModules],
+          ...course,
+          files: [...(course.files || []), ...newFiles],
+          modules: [...(course.modules || []), ...newModules],
         }
 
         await saveCourse(currentUser.uid, updatedCourse)
         setCourse(updatedCourse)
-        setUrls("")
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to process files/URLs. Please try again."
-        setUploadError(message)
-        console.error(error)
+        console.error("Upload failed:", error)
       } finally {
         setIsUploading(false)
         setIsProcessing(false)
       }
     },
-    [course, urls],
-  )
-
-  const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true)
-    } else if (e.type === "dragleave") {
-      setDragActive(false)
-    }
-  }, [])
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      setDragActive(false)
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        handleFileUpload(e.dataTransfer.files)
-      }
-    },
-    [handleFileUpload],
+    [course],
   )
 
   const handleDeleteFile = async (fileName: string) => {
@@ -197,6 +146,14 @@ export default function CoursePage() {
     }
     
     router.push(`/course/${params.id}/learn?module=${moduleIndex}&submodule=${subModuleIndex}`)
+  }
+
+  const handleStartQuiz = (moduleIndex: number, subModuleIndex?: number) => {
+    if (subModuleIndex !== undefined) {
+      router.push(`/course/${params.id}/quiz?module=${moduleIndex}&submodule=${subModuleIndex}`)
+    } else {
+      router.push(`/course/${params.id}/quiz?module=${moduleIndex}&submodule=0`)
+    }
   }
 
   const formatFileSize = (bytes: number) => {
@@ -297,49 +254,45 @@ export default function CoursePage() {
                         </div>
                         <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1 sm:mb-2">Upload your study materials</h3>
                         <p className="text-xs sm:text-sm text-muted-foreground text-center mb-4 max-w-sm">
-                          Upload PDF files to generate your course outline and start learning
+                          Upload PDF files or add YouTube links to generate your course outline and start learning
                         </p>
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            multiple
-                            accept=".pdf"
-                            className="hidden"
-                            onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-                          />
-                          <Button asChild className="text-xs sm:text-sm h-9 sm:h-10">
-                            <span>
-                              <Upload className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                              Upload PDFs
-                            </span>
-                          </Button>
-                        </label>
+                        <Button onClick={() => setUploadDialogOpen(true)} className="text-xs sm:text-sm h-9 sm:h-10">
+                          <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+                          Add Materials
+                        </Button>
                       </CardContent>
                     </Card>
                   ) : (
                     <div className="space-y-3 sm:space-y-4">
                       {/* New Content Banner */}
-                      {course?.modules.some((m) => m.isNew) && (
+                      {showNewContentBanner && course?.modules.some((m) => m.isNew) && (
                         <motion.div
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="relative overflow-hidden rounded-lg border border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 p-4"
+                          exit={{ opacity: 0, y: -10 }}
+                          className="rounded-lg border border-amber-500 bg-amber-500 p-4"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center flex-shrink-0">
-                              <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                              <Sparkles className="w-5 h-5 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-amber-800 dark:text-amber-200 text-sm sm:text-base">
+                              <h3 className="font-semibold text-white text-sm sm:text-base">
                                 New Content Added! 🎉
                               </h3>
-                              <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300/80">
+                              <p className="text-xs sm:text-sm text-white/90">
                                 {course.modules.filter((m) => m.isNew).length} new module{course.modules.filter((m) => m.isNew).length > 1 ? 's' : ''} available. 
-                                Look for the <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/50 px-1.5 py-0.5 rounded-full mx-1"><Sparkles className="w-2.5 h-2.5" />NEW</span> badge below.
+                                Look for the <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-500 bg-white px-1.5 py-0.5 rounded-full mx-1"><Sparkles className="w-2.5 h-2.5" />NEW</span> badge below.
                               </p>
                             </div>
+                            <button
+                              onClick={() => setShowNewContentBanner(false)}
+                              className="p-1.5 rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
+                              aria-label="Dismiss"
+                            >
+                              <X className="w-4 h-4 text-white" />
+                            </button>
                           </div>
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-amber-200/20 dark:from-amber-400/10 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
                         </motion.div>
                       )}
 
@@ -439,6 +392,18 @@ export default function CoursePage() {
                                           )}
                                         </div>
                                         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6 sm:h-7 sm:w-7"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleStartQuiz(moduleIndex, subIndex)
+                                            }}
+                                            title="Take Quiz"
+                                          >
+                                            <GraduationCap className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
+                                          </Button>
                                           {subModule.completed ? (
                                             <span className="text-xs text-success">Done</span>
                                           ) : (
@@ -448,6 +413,19 @@ export default function CoursePage() {
                                         </div>
                                       </motion.button>
                                     ))}
+                                  </div>
+                                  
+                                  {/* Module-level Quiz Button */}
+                                  <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border/50">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full bg-transparent"
+                                      onClick={() => handleStartQuiz(moduleIndex)}
+                                    >
+                                      <GraduationCap className="w-4 h-4 mr-2" />
+                                      Take Module Quiz
+                                    </Button>
                                   </div>
                                 </CardContent>
                               </Card>
@@ -461,63 +439,24 @@ export default function CoursePage() {
 
                 {/* Files Tab */}
                 <TabsContent value="files" className="space-y-4 sm:space-y-6">
-                  <div
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
-                    className={`border-2 border-dashed rounded-xl p-4 sm:p-8 text-center transition-colors ${
-                      dragActive ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/50"
-                    }`}
-                  >
-                    <Upload className={`w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-4 ${dragActive ? "text-primary" : "text-muted-foreground"}`} />
-                    <p className="text-sm sm:text-base text-foreground font-medium mb-1 sm:mb-2">Drag and drop PDF files here</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">or</p>
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        multiple
-                        accept=".pdf"
-                        className="hidden"
-                        onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-                        disabled={isUploading}
-                      />
-                      <Button variant="secondary" disabled={isUploading} className="text-xs sm:text-sm h-9 sm:h-10">
-                        {isUploading ? "Uploading..." : "Browse Files"}
+                  {/* Upload Button Card */}
+                  <Card className="border-border/50 bg-gradient-to-br from-primary/5 to-secondary/5 border-dashed">
+                    <CardContent className="flex flex-col sm:flex-row items-center justify-between py-6 gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Upload className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-foreground">Add Learning Materials</h3>
+                          <p className="text-sm text-muted-foreground">Upload PDFs or add YouTube/web links</p>
+                        </div>
+                      </div>
+                      <Button onClick={() => setUploadDialogOpen(true)} className="gap-2">
+                        <Plus className="w-4 h-4" />
+                        Add Materials
                       </Button>
-                    </label>
-                    <p className="text-xs text-muted-foreground mt-2 sm:mt-4">PDF files only. No size limits.</p>
-                  </div>
-
-                  {/* New URL Input Section */}
-                  <div className="space-y-4">
-                    <Label htmlFor="urls">Or provide URLs (e.g., YouTube links, comma-separated)</Label>
-                    <Input
-                      id="urls"
-                      type="text"
-                      placeholder="https://example.com/video1, https://example.com/video2"
-                      value={urls}
-                      onChange={(e) => setUrls(e.target.value)}
-                      disabled={isUploading}
-                    />
-                    <Button
-                      onClick={() => handleFileUpload([], urls.split(",").map((u) => u.trim()).filter((u) => u))}
-                      disabled={isUploading || !urls.trim()}
-                      variant="outline"
-                    >
-                      Process URLs
-                    </Button>
-                  </div>
-
-                  {uploadError && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-sm text-destructive"
-                    >
-                      {uploadError}
-                    </motion.div>
-                  )}
+                    </CardContent>
+                  </Card>
 
                   {course && course.files.length > 0 && (
                     <Card className="border-border/50 bg-card/50">
@@ -554,12 +493,38 @@ export default function CoursePage() {
                       </CardContent>
                     </Card>
                   )}
+
+                  {course && course.files.length === 0 && (
+                    <Card className="border-border/30 bg-card/30">
+                      <CardContent className="flex flex-col items-center justify-center py-12">
+                        <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+                          <File className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">No files uploaded yet</h3>
+                        <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
+                          Add your study materials to generate course content
+                        </p>
+                        <Button onClick={() => setUploadDialogOpen(true)} variant="secondary">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Materials
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>
           </main>
         </div>
       </div>
+
+      {/* Upload Dialog */}
+      <UploadDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        onConfirm={handleUploadConfirm}
+        isUploading={isUploading}
+      />
     </>
   )
 }

@@ -76,10 +76,15 @@ class QueryB(BaseModel):
     text: str
     user_id: str
 
+class QuizQuery(BaseModel):
+    text: str
+    user_id: str
+    question_count: int = 5  # Default to 5 questions
+
 
 @app.post("/quizes")
-async def quizes(payload: QueryB):
-    cards = await quiz(payload.text, payload.user_id) 
+async def quizes(payload: QuizQuery):
+    cards = await quiz(payload.text, payload.user_id, payload.question_count) 
     return clean_and_parse_json(cards)
 
 

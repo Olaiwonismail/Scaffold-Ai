@@ -15,21 +15,20 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { BookOpen, Plus, LogOut, GraduationCap } from "lucide-react"
+import { BookOpen, Plus, LogOut, GraduationCap, User, Settings } from "lucide-react"
 import {
   getUser,
   getCourses,
   saveCourse,
   generateId,
-  saveUser,
 } from "@/lib/storage"
-import type { User, Course } from "@/lib/types"
+import type { User as UserType, Course } from "@/lib/types"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<UserType | null>(null)
   const [courses, setCourseList] = useState<Course[]>([])
   const [newCourseTitle, setNewCourseTitle] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -125,17 +124,30 @@ export default function DashboardPage() {
       <header className="border-b border-border/20 bg-card/40 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-primary" />
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-white" />
             </div>
             <div>
               <h1 className="font-semibold text-foreground">Scaffold AI</h1>
               <p className="text-xs text-muted-foreground">Learning Hub</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleLogout}>
-            <LogOut className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => router.push("/profile")}
+              className="gap-2"
+            >
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xs font-medium">
+                {user.name?.charAt(0)?.toUpperCase() || "U"}
+              </div>
+              <span className="hidden sm:inline text-sm">{user.name?.split(" ")[0]}</span>
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Log out">
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
       </header>
 

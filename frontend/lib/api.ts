@@ -133,17 +133,28 @@ export async function getTutorContent(
   })
 }
 
-// Get quiz for a submodule - using local API route
-export async function getQuiz(moduleTitle: string, submoduleTitle: string, userId: string): Promise<QuizResponse> {
+// Get quiz for a submodule or module - using local API route
+export async function getQuiz(
+  moduleTitle: string, 
+  submoduleTitle: string | null,  // null for module-level quiz
+  userId: string,
+  questionCount: number = 5
+): Promise<QuizResponse> {
   return withRetry(async () => {
+    // Build the topic text based on whether it's module or submodule level
+    const topicText = submoduleTitle 
+      ? `topic: ${moduleTitle}, subtopic: ${submoduleTitle}`
+      : `topic: ${moduleTitle} (cover all subtopics comprehensively)`
+    
     const response = await fetch("/api/quiz", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        text: `topic: ${moduleTitle}, subtopic: ${submoduleTitle}`,
+        text: topicText,
         user_id: userId,
+        question_count: questionCount,
       }),
     })
 
