@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
-import { ChevronLeft, ChevronRight, Home, CheckCircle, Circle, BookOpen, GraduationCap, Menu, X, MessageSquare } from "lucide-react"
+import { ChevronLeft, ChevronRight, Home, CheckCircle, Circle, BookOpen, GraduationCap, Menu, X, MessageSquare, Sparkles } from "lucide-react"
 import {
   getCourseById,
   saveCourse,
@@ -69,6 +69,7 @@ export default function LearnPage() {
         subModule.title,
         userProfile?.adaptLevel || 5,
         userProfile?.analogy || "general learning",
+        currentUser.uid,
       )
 
       setSlides(response.lesson_phases)
@@ -396,6 +397,12 @@ export default function LearnPage() {
                             >
                               {allComplete ? <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" /> : <Circle className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />}
                               <span className="leading-tight break-words line-clamp-2">{module.title}</span>
+                              {module.isNew && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full flex-shrink-0 animate-pulse">
+                                  <Sparkles className="w-2.5 h-2.5" />
+                                  NEW
+                                </span>
+                              )}
                             </div>
                             <div className="ml-4 space-y-0.5 sm:space-y-1">
                               {module.subModules.map((subModule, subIdx) => (
@@ -416,6 +423,11 @@ export default function LearnPage() {
                                     <Circle className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" />
                                   )}
                                   <span className="leading-snug break-words line-clamp-2">{subModule.title}</span>
+                                  {subModule.isNew && (
+                                    <span className="inline-flex items-center text-[8px] font-semibold text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30 px-1 py-0.5 rounded-full flex-shrink-0">
+                                      NEW
+                                    </span>
+                                  )}
                                 </button>
                               ))}
                             </div>
@@ -504,6 +516,7 @@ export default function LearnPage() {
               <ChatPanel
                   initialMessages={currentSubModule?.chatHistory || []}
                   onMessagesChange={handleChatMessagesChange}
+                  userId={auth.currentUser?.uid || ""}
               />
             </div>
 
@@ -569,6 +582,7 @@ export default function LearnPage() {
                 {activePanel === "notes" ? <NotesPanel /> : <ChatPanel
                   initialMessages={currentSubModule?.chatHistory || []}
                   onMessagesChange={handleChatMessagesChange}
+                  userId={auth.currentUser?.uid || ""}
                 />}
               </div>
             </div>

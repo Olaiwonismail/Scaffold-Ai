@@ -51,7 +51,7 @@ export default function QuizPage() {
 
     setIsLoading(true)
     try {
-      const response = await getQuiz(module.title, subModule.title)
+      const response = await getQuiz(module.title, subModule.title, currentUser.uid)
       setQuiz(response)
 
       // Save quiz to DB

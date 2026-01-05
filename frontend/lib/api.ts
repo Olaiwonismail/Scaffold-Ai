@@ -46,7 +46,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
 }
 
 // Upload PDFs - using local API route
-export async function uploadPDFs(files: File[], urls?: string[]): Promise<TopicResponse> {
+export async function uploadPDFs(files: File[], urls: string[] | undefined, userId: string): Promise<TopicResponse> {
   return withRetry(async () => {
     const formData = new FormData()
     files.forEach((file) => {
@@ -55,6 +55,7 @@ export async function uploadPDFs(files: File[], urls?: string[]): Promise<TopicR
     if (urls && urls.length > 0) {
       formData.append("urls", urls.join(","))
     }
+    formData.append("user_id", userId)
 
     const response = await fetch("/api/upload", {
       method: "POST",
@@ -70,12 +71,45 @@ export async function uploadPDFs(files: File[], urls?: string[]): Promise<TopicR
   })
 }
 
+// Update outline with new files - using local API route
+export async function updateOutline(
+  files: File[], 
+  urls: string[] | undefined, 
+  userId: string, 
+  existingOutline: TopicResponse
+): Promise<TopicResponse> {
+  return withRetry(async () => {
+    const formData = new FormData()
+    files.forEach((file) => {
+      formData.append("files", file)
+    })
+    if (urls && urls.length > 0) {
+      formData.append("urls", urls.join(","))
+    }
+    formData.append("user_id", userId)
+    formData.append("existing_outline", JSON.stringify(existingOutline))
+
+    const response = await fetch("/api/update-outline", {
+      method: "POST",
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const message = await response.text()
+      throw new Error(`Update outline failed: ${response.status} ${message}`)
+    }
+
+    return response.json()
+  })
+}
+
 // Get tutor content for a submodule - using local API route
 export async function getTutorContent(
   moduleTitle: string,
   submoduleTitle: string,
   adaptLevel: number,
   analogy: string,
+  userId: string,
 ): Promise<TutorResponse> {
   return withRetry(async () => {
     const response = await fetch("/api/tutor", {
@@ -87,6 +121,7 @@ export async function getTutorContent(
         text: `topic: ${moduleTitle}, subtopic: ${submoduleTitle}`,
         adapt: adaptLevel.toString(),
         analogy: analogy,
+        user_id: userId,
       }),
     })
 
@@ -99,7 +134,7 @@ export async function getTutorContent(
 }
 
 // Get quiz for a submodule - using local API route
-export async function getQuiz(moduleTitle: string, submoduleTitle: string): Promise<QuizResponse> {
+export async function getQuiz(moduleTitle: string, submoduleTitle: string, userId: string): Promise<QuizResponse> {
   return withRetry(async () => {
     const response = await fetch("/api/quiz", {
       method: "POST",
@@ -108,6 +143,7 @@ export async function getQuiz(moduleTitle: string, submoduleTitle: string): Prom
       },
       body: JSON.stringify({
         text: `topic: ${moduleTitle}, subtopic: ${submoduleTitle}`,
+        user_id: userId,
       }),
     })
 
@@ -120,7 +156,7 @@ export async function getQuiz(moduleTitle: string, submoduleTitle: string): Prom
 }
 
 // Chat with AI - using local API route
-export async function sendChatMessage(message: string): Promise<string> {
+export async function sendChatMessage(message: string, userId: string): Promise<string> {
   return withRetry(async () => {
     const response = await fetch("/api/chat", {
       method: "POST",
@@ -129,6 +165,7 @@ export async function sendChatMessage(message: string): Promise<string> {
       },
       body: JSON.stringify({
         text: message,
+        user_id: userId,
       }),
     })
 

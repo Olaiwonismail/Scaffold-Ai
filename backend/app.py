@@ -1,11 +1,12 @@
-from llm_services.bot import tutor,quiz,ask_chatbot
-from llm_services.outline import create_outline
+from llm_services.bot import tutor, quiz, ask_chatbot
+from llm_services.outline import create_outline, merge_outlines
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
-from typing import List,Optional
+from typing import List, Optional
 import tempfile
 import os
 import shutil
 import asyncio
+import json
 from loaders.multiple_file import load_directory
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -64,40 +65,44 @@ app = FastAPI()
 def read_root():
     return {"message": "Hello from FastAPI!"}
 from pydantic import BaseModel
+
 class Query(BaseModel):
     text: str
     adapt: str
-    analogy: Optional[str]=''
+    analogy: Optional[str] = ''
+    user_id: str
 
 class QueryB(BaseModel):
     text: str
+    user_id: str
 
 
 @app.post("/quizes")
-
 async def quizes(payload: QueryB):
-    cards = await quiz(payload.text) 
+    cards = await quiz(payload.text, payload.user_id) 
     return clean_and_parse_json(cards)
 
 
 @app.post("/tutor")
 async def tutor_endpoint(payload: Query):
-    # query ="""topic: Algebra of Complex Numbers ,subtopic : Multiplication"""
-    data = await tutor(payload.text,payload.adapt,payload.analogy)
+    data = await tutor(payload.text, payload.adapt, payload.analogy, payload.user_id)
     print(payload)
     return clean_and_parse_json(data)
-    # return {"you_sent": payload.text}
 
 @app.post('/chatbot')    
-async def chatbot(payload : QueryB):
-    data = await ask_chatbot(payload.text)
+async def chatbot(payload: QueryB):
+    data = await ask_chatbot(payload.text, payload.user_id)
     print(data)
     return data
     
 
 
 @app.post("/upload_pdfs/")
-async def upload_pdfs(files: List[UploadFile] = File(None), urls: str = Form(None)):
+async def upload_pdfs(
+    files: List[UploadFile] = File(None), 
+    urls: str = Form(None),
+    user_id: str = Form(...)
+):
     youtube_urls = []
     if urls:
         # Assume URLs are comma-separated; split and strip whitespace
@@ -108,7 +113,6 @@ async def upload_pdfs(files: List[UploadFile] = File(None), urls: str = Form(Non
 
     # Create a temporary directory only if files are uploaded
     temp_dir = None
-    # total_size = 0
     saved_files = []
 
     if files:
@@ -121,22 +125,89 @@ async def upload_pdfs(files: List[UploadFile] = File(None), urls: str = Form(Non
                         detail=f"File '{file.filename}' is not a PDF."
                     )
                 contents = await file.read()
-                # removed total size limit check
                 file_path = os.path.join(temp_dir, file.filename)
                 with open(file_path, "wb") as f:
                     f.write(contents)
                 saved_files.append(file.filename)
 
-            # Pass the temp_dir to your async processing function
+            # Pass the temp_dir and user_id to processing functions
             data = await create_outline(temp_dir, youtube_urls)
-            result = await load_directory(temp_dir)
+            result = await load_directory(temp_dir, youtube_urls, user_id)
             
         finally:
             # Clean up temp directory after processing
             if temp_dir:
                 shutil.rmtree(temp_dir, ignore_errors=True)
-
-    # Always call create_outline with documents and URLs
-    
+    else:
+        # Only YouTube URLs provided
+        temp_dir = tempfile.mkdtemp(prefix="youtube_only_")
+        try:
+            data = await create_outline(temp_dir, youtube_urls)
+            result = await load_directory(temp_dir, youtube_urls, user_id)
+        finally:
+            if temp_dir:
+                shutil.rmtree(temp_dir, ignore_errors=True)
     
     return data
+
+
+@app.post("/update_outline/")
+async def update_outline(
+    files: List[UploadFile] = File(None), 
+    urls: str = Form(None),
+    user_id: str = Form(...),
+    existing_outline: str = Form(...)
+):
+    """
+    Update an existing outline with new files/URLs.
+    Uses LLM-assisted merging to intelligently combine content.
+    """
+    youtube_urls = []
+    if urls:
+        youtube_urls = [url.strip() for url in urls.split(",") if url.strip()]
+    
+    if not files and not youtube_urls:
+        raise HTTPException(status_code=400, detail="No new files or URLs provided.")
+
+    # Parse existing outline
+    try:
+        existing_outline_data = json.loads(existing_outline)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid existing_outline JSON.")
+
+    temp_dir = None
+    saved_files = []
+
+    if files:
+        temp_dir = tempfile.mkdtemp(prefix="update_pdfs_")
+        try:
+            for file in files:
+                if file.content_type != "application/pdf":
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"File '{file.filename}' is not a PDF."
+                    )
+                contents = await file.read()
+                file_path = os.path.join(temp_dir, file.filename)
+                with open(file_path, "wb") as f:
+                    f.write(contents)
+                saved_files.append(file.filename)
+
+            # Merge outlines and add new documents
+            merged_outline = await merge_outlines(temp_dir, youtube_urls, existing_outline_data)
+            result = await load_directory(temp_dir, youtube_urls, user_id)
+            
+        finally:
+            if temp_dir:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+    else:
+        # Only YouTube URLs
+        temp_dir = tempfile.mkdtemp(prefix="youtube_update_")
+        try:
+            merged_outline = await merge_outlines(temp_dir, youtube_urls, existing_outline_data)
+            result = await load_directory(temp_dir, youtube_urls, user_id)
+        finally:
+            if temp_dir:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+    
+    return merged_outline

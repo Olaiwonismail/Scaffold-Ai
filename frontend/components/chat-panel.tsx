@@ -13,9 +13,10 @@ import type { Message } from "@/lib/types"
 interface ChatPanelProps {
   initialMessages?: Message[]
   onMessagesChange?: (messages: Message[]) => void
+  userId: string
 }
 
-export function ChatPanel({ initialMessages = [], onMessagesChange }: ChatPanelProps) {
+export function ChatPanel({ initialMessages = [], onMessagesChange, userId }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -66,7 +67,7 @@ export function ChatPanel({ initialMessages = [], onMessagesChange }: ChatPanelP
     setIsLoading(true)
 
     try {
-      const response = await sendChatMessage(input.trim())
+      const response = await sendChatMessage(input.trim(), userId)
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",

@@ -36,21 +36,25 @@ def _extract_image_data_urls(retrieved_docs):
     return list(dict.fromkeys(data_urls))  # dedupe, preserve order
 
 
-async def ask_chatbot(query: str):
-    print(query)
+async def ask_chatbot(query: str, user_id: str):
+    """Chat with the AI using user-scoped context."""
+    print(f"Chatbot query for user {user_id}: {query}")
     response = agent.invoke(
-        {"messages": [{"role": "user", "content": query}]}
+        {"messages": [{"role": "user", "content": query}], "user_id": user_id}
     )
     return response["messages"][1].content
 
 
-async def tutor(query: str, adapt: str, analogy: str):
+async def tutor(query: str, adapt: str, analogy: str, user_id: str):
+    """Get tutor content using user-scoped context."""
     query = (
         f"Act as a tutur the user understanding out of ten is {adapt} where 10 is firm grasp "
         f"of the concept and 0 is absolutely no idea what the concept is for analogy here is "
         f"some info about the user {analogy}  if no info is pprovided use a suitable one {query}"
     )
-    result = tutor_agent.invoke({"messages": [{"role": "user", "content": query}]})
+    result = tutor_agent.invoke(
+        {"messages": [{"role": "user", "content": query}], "user_id": user_id}
+    )
     msgs = result["messages"]
     raw = msgs[-1].content
 
@@ -68,9 +72,10 @@ async def tutor(query: str, adapt: str, analogy: str):
     return raw
 
 
-async def quiz(query: str):
+async def quiz(query: str, user_id: str):
+    """Generate quiz using user-scoped context."""
     result = quiz_agent.invoke(
-        {"messages": [{"role": "user", "content": {query}}]}
+        {"messages": [{"role": "user", "content": query}], "user_id": user_id}
     )
     msgs = result["messages"]
     return msgs[-1].content

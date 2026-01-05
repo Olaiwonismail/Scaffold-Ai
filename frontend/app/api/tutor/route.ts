@@ -5,6 +5,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
+    if (!body.user_id) {
+      return NextResponse.json({ error: "user_id is required" }, { status: 400 })
+    }
+
     const response = await fetch(`${BASE_URL}tutor`, {
       method: "POST",
       headers: {

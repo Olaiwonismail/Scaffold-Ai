@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { BookOpen, Upload, FileText, ChevronRight, Home, Trash2, Play, List, File, Menu, X } from "lucide-react"
+import { BookOpen, Upload, FileText, ChevronRight, Home, Trash2, Play, List, File, Menu, X, Sparkles } from "lucide-react"
 import { getCourseById, saveCourse, getUser } from "@/lib/storage"
 import type { Course, Module, UploadedFile } from "@/lib/types"
 import { uploadPDFs } from "@/lib/api"
@@ -95,7 +95,7 @@ export default function CoursePage() {
       setIsProcessing(true)
 
       try {
-        const response = await uploadPDFs(fileArray, urlArray)
+        const response = await uploadPDFs(fileArray, urlArray, currentUser.uid)
 
         const newFiles: UploadedFile[] = fileArray.map((f) => ({
           name: f.name,
@@ -103,6 +103,7 @@ export default function CoursePage() {
           uploadedAt: new Date().toISOString(),
         }))
 
+        const addedAt = new Date().toISOString()
         const newModules: Module[] = response.topics.map((topic) => ({
           title: topic.title,
           summary: topic.summary,
@@ -111,8 +112,12 @@ export default function CoursePage() {
             title: sub,
             completed: false,
             slides: undefined,
+            isNew: true,
+            addedAt: addedAt,
           })),
           completed: false,
+          isNew: true,
+          addedAt: addedAt,
         }))
 
         const updatedCourse: Course = {
@@ -168,7 +173,29 @@ export default function CoursePage() {
     setCourse(updatedCourse)
   }
 
-  const handleStartLearning = (moduleIndex: number, subModuleIndex: number) => {
+  const handleStartLearning = async (moduleIndex: number, subModuleIndex: number) => {
+    // Clear the isNew flag when user starts learning
+    if (course && auth.currentUser) {
+      const module = course.modules[moduleIndex]
+      const subModule = module?.subModules[subModuleIndex]
+      
+      if (module?.isNew || subModule?.isNew) {
+        const updatedCourse = { ...course }
+        updatedCourse.modules[moduleIndex].subModules[subModuleIndex].isNew = false
+        
+        // If all submodules in this module have been viewed, mark module as not new
+        const allSubmodulesViewed = updatedCourse.modules[moduleIndex].subModules.every(
+          (sub) => !sub.isNew
+        )
+        if (allSubmodulesViewed) {
+          updatedCourse.modules[moduleIndex].isNew = false
+        }
+        
+        await saveCourse(auth.currentUser.uid, updatedCourse)
+        setCourse(updatedCourse)
+      }
+    }
+    
     router.push(`/course/${params.id}/learn?module=${moduleIndex}&submodule=${subModuleIndex}`)
   }
 
@@ -291,6 +318,31 @@ export default function CoursePage() {
                     </Card>
                   ) : (
                     <div className="space-y-3 sm:space-y-4">
+                      {/* New Content Banner */}
+                      {course?.modules.some((m) => m.isNew) && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="relative overflow-hidden rounded-lg border border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 p-4"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center flex-shrink-0">
+                              <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-amber-800 dark:text-amber-200 text-sm sm:text-base">
+                                New Content Added! 🎉
+                              </h3>
+                              <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300/80">
+                                {course.modules.filter((m) => m.isNew).length} new module{course.modules.filter((m) => m.isNew).length > 1 ? 's' : ''} available. 
+                                Look for the <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/50 px-1.5 py-0.5 rounded-full mx-1"><Sparkles className="w-2.5 h-2.5" />NEW</span> badge below.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-amber-200/20 dark:from-amber-400/10 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
+                        </motion.div>
+                      )}
+
                       {/* Summary */}
                       <Card className="border-border/50 bg-card/50">
                         <CardHeader>
@@ -331,9 +383,17 @@ export default function CoursePage() {
                                       </span>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <CardTitle className={`text-sm sm:text-lg ${allCompleted ? "text-success" : ""}`}>
-                                        {module.title}
-                                      </CardTitle>
+                                      <div className="flex items-center gap-2">
+                                        <CardTitle className={`text-sm sm:text-lg ${allCompleted ? "text-success" : ""}`}>
+                                          {module.title}
+                                        </CardTitle>
+                                        {module.isNew && (
+                                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30 px-2 py-0.5 rounded-full animate-pulse">
+                                            <Sparkles className="w-3 h-3" />
+                                            NEW
+                                          </span>
+                                        )}
+                                      </div>
                                       <CardDescription className="text-xs sm:text-sm">{module.summary}</CardDescription>
                                     </div>
                                     {allCompleted && (
@@ -371,6 +431,12 @@ export default function CoursePage() {
                                           >
                                             {subModule.title}
                                           </span>
+                                          {subModule.isNew && (
+                                            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                              <Sparkles className="w-2.5 h-2.5" />
+                                              NEW
+                                            </span>
+                                          )}
                                         </div>
                                         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                                           {subModule.completed ? (

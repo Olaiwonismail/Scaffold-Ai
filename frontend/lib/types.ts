@@ -43,6 +43,8 @@ export interface SubModule {
   slides?: LessonPhase[]
   quiz?: Quiz
   chatHistory?: Message[]
+  isNew?: boolean // Flag to indicate newly added content
+  addedAt?: string // Timestamp when this submodule was added
 }
 
 export interface Module {
@@ -51,6 +53,8 @@ export interface Module {
   subtopics: string[]
   subModules: SubModule[]
   completed: boolean
+  isNew?: boolean // Flag to indicate newly added module
+  addedAt?: string // Timestamp when this module was added
 }
 
 export interface UploadedFile {

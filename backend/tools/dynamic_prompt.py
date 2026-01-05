@@ -1,13 +1,19 @@
 from langchain.tools import tool
 from langchain.agents.middleware import dynamic_prompt, ModelRequest
-from tools.vector_store import vector_store
+from tools.vector_store import vector_store, search_for_user
 
 @dynamic_prompt
 def prompt_with_context(request: ModelRequest) -> str:
-    """Inject context into state messages."""
+    """Inject user-scoped context into state messages."""
     last_query = request.state["messages"][-1].text
-
-    retrieved_docs = vector_store.similarity_search(last_query)
+    user_id = request.state.get("user_id")
+    
+    if user_id:
+        retrieved_docs = search_for_user(last_query, user_id)
+    else:
+        # Fallback to unfiltered search (should not happen in production)
+        print("⚠️ Warning: No user_id provided, using unfiltered search")
+        retrieved_docs = vector_store.similarity_search(last_query)
 
     docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
 
@@ -18,16 +24,24 @@ def prompt_with_context(request: ModelRequest) -> str:
 
     return system_message
 
-doc = {'item':None}
+doc = {'item': None}
+
 @dynamic_prompt
 def get_lessons(request: ModelRequest) -> str:
-    """Inject context into state messages."""
+    """Inject user-scoped context into state messages for lessons."""
     last_query = request.state["messages"][-1].text
-    retrieved_docs = vector_store.similarity_search(last_query)
+    user_id = request.state.get("user_id")
+    
+    if user_id:
+        retrieved_docs = search_for_user(last_query, user_id)
+    else:
+        print("⚠️ Warning: No user_id provided, using unfiltered search")
+        retrieved_docs = vector_store.similarity_search(last_query)
+    
     doc['item'] = retrieved_docs
-    print(retrieved_docs)
+    print(f"Retrieved {len(retrieved_docs)} docs for user: {user_id}")
 
-    docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
+    docs_content = "\n\n".join(d.page_content for d in retrieved_docs)
 
     system_message = (
         """
@@ -68,12 +82,19 @@ Output ONLY valid JSON matching the structure below.
 
 @dynamic_prompt
 def get_quiz(request: ModelRequest) -> str:
-    """Inject context into state messages for flashcards."""
+    """Inject user-scoped context into state messages for quizzes."""
     last_query = request.state["messages"][-1].text
-    retrieved_docs = vector_store.similarity_search(last_query)
-    print(retrieved_docs)
+    user_id = request.state.get("user_id")
+    
+    if user_id:
+        retrieved_docs = search_for_user(last_query, user_id)
+    else:
+        print("⚠️ Warning: No user_id provided, using unfiltered search")
+        retrieved_docs = vector_store.similarity_search(last_query)
+    
+    print(f"Retrieved {len(retrieved_docs)} docs for quiz, user: {user_id}")
 
-    docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
+    docs_content = "\n\n".join(d.page_content for d in retrieved_docs)
 
     system_message = (
         """

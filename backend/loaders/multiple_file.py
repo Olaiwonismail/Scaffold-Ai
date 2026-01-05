@@ -8,7 +8,7 @@ from langchain_community.document_loaders import (
     PyMuPDFLoader, TextLoader, YoutubeLoader
 )
 from langchain_core.documents import Document
-from tools.vector_store import vector_store
+from tools.vector_store import vector_store, add_documents_for_user
 import fitz  # PyMuPDF
 # from loaders.youtube_utils import process_playlist
 
@@ -136,8 +136,11 @@ async def chunk_directory(directory_path: str, youtube_urls: List[str] = None) -
             
     return results
 
-async def load_directory(directory_path: str, youtube_urls: List[str] = None):
-    """Load files + YouTube to vector store concurrently"""
+async def load_directory(directory_path: str, youtube_urls: List[str] = None, user_id: str = None):
+    """Load files + YouTube to vector store concurrently with user isolation"""
+    if not user_id:
+        raise ValueError("user_id is required for document loading")
+    
     document_ids_list = []
     tasks = []
     
@@ -154,7 +157,7 @@ async def load_directory(directory_path: str, youtube_urls: List[str] = None):
             
     processed_items = await asyncio.gather(*tasks)
     
-    # Add to vector store
+    # Add to vector store with user_id
     for item in processed_items:
         chunks = []
         if len(item) == 2: # File
@@ -163,8 +166,9 @@ async def load_directory(directory_path: str, youtube_urls: List[str] = None):
             _, _, chunks = item
             
         if chunks:
-            document_ids = await asyncio.to_thread(vector_store.add_documents, documents=chunks)
+            # Use user-scoped add function
+            document_ids = await asyncio.to_thread(add_documents_for_user, chunks, user_id)
             document_ids_list.append(document_ids)
     
-    print(document_ids_list[:3])
+    print(f"📚 Loaded {len(document_ids_list)} document batches for user: {user_id}")
     return str(document_ids_list[:3])
