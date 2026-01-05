@@ -1,0 +1,16 @@
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/qdrant_data:rw
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Add other environment variables here if needed, or use env_file
+
+volumes:
+  backend_data:

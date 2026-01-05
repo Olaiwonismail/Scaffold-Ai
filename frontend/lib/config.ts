@@ -1,1 +1,1 @@
-export const BASE_URL = "https://congenial-cod-v6gjrr4rqrg53x97q-8000.app.github.dev/"
+export const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
