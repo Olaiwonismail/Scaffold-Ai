@@ -92,7 +92,7 @@ export default function OnboardingPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-3">
-                <Label htmlFor="analogy" className="text-sm font-medium">What are your interests?</Label>
+                <Label htmlFor="analogy" className="text-sm font-medium">How do you learn?</Label>
                 <Textarea
                   id="analogy"
                   placeholder="e.g., I learn best with step-by-step breakdowns..."
