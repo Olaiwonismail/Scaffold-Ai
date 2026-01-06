@@ -106,7 +106,7 @@ export default function OnboardingPage() {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Learning pace</Label>
+                  <Label className="text-sm font-medium">How would you like concepts explained?</Label>
                 </div>
                 <Slider 
                   value={adaptLevel} 
