@@ -28,18 +28,9 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const credentials = await signInWithEmailAndPassword(auth, email, password)
-      const uid = credentials.user.uid
-
-      const profileResponse = await fetch(`/api/users?uid=${uid}`)
-      if (!profileResponse.ok) {
-        setError("Account profile not found. Please sign up again.")
-        setIsLoading(false)
-        return
-      }
-
-      const profile = await profileResponse.json()
-      saveUser({ ...profile, id: profile.uid })
+      await signInWithEmailAndPassword(auth, email, password)
+      // Optimization: Skip redundant profile fetch/save on login. 
+      // Dashboard will verify user existence.
       router.push("/dashboard")
     } catch (loginError) {
       const message = loginError instanceof Error ? loginError.message : "Failed to sign in."
@@ -64,6 +55,7 @@ export default function LoginPage() {
 
       const profilePayload = {
         uid,
+        id: uid, 
         email,
         name: displayName || email.split("@")[0],
         analogy: "",
@@ -71,13 +63,8 @@ export default function LoginPage() {
         createdAt: new Date().toISOString(),
       }
 
-      await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profilePayload),
-      })
-
-      saveUser({ ...profilePayload, id: uid })
+      // Optimization: Single DB call
+      await saveUser(profilePayload)
       router.push("/dashboard")
     } catch (googleError) {
       const message = googleError instanceof Error ? googleError.message : "Google sign-in failed."

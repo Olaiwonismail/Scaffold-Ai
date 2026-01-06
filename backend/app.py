@@ -13,7 +13,8 @@ from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
-# MAX_TOTAL_SIZE = 50 * 1024 * 1024 
+MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024 # 50MB
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],       # or ["http://localhost:3000"] for specific frontends
@@ -130,6 +131,11 @@ async def upload_pdfs(
                         detail=f"File '{file.filename}' is not a PDF."
                     )
                 contents = await file.read()
+                if len(contents) > MAX_FILE_SIZE_BYTES:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"File '{file.filename}' exceeds the 50MB size limit."
+                    )
                 file_path = os.path.join(temp_dir, file.filename)
                 with open(file_path, "wb") as f:
                     f.write(contents)
@@ -193,6 +199,11 @@ async def update_outline(
                         detail=f"File '{file.filename}' is not a PDF."
                     )
                 contents = await file.read()
+                if len(contents) > MAX_FILE_SIZE_BYTES:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"File '{file.filename}' exceeds the 50MB size limit."
+                    )
                 file_path = os.path.join(temp_dir, file.filename)
                 with open(file_path, "wb") as f:
                     f.write(contents)

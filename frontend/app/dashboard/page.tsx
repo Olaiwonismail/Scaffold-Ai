@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { LoadingScreen } from "@/components/loading-screen"
 import { BookOpen, Plus, LogOut, GraduationCap, User, Settings } from "lucide-react"
 import {
   getUser,
@@ -44,17 +45,20 @@ export default function DashboardPage() {
       }
 
       try {
-        // Fetch user from DB
-        const profile = await getUser(firebaseUser.uid)
+        // Parallel fetch for better performance
+        const [profile, fetchedCourses] = await Promise.all([
+          getUser(firebaseUser.uid),
+          getCourses(firebaseUser.uid),
+        ])
+
         if (profile) {
           setUser(profile)
         } else {
-            // Should probably redirect to onboarding or create a default user if not found?
-            // For now, let's just keep loading state false
+          // If no profile found, redirect to onboarding
+          router.push("/onboarding")
+          return
         }
 
-        // Fetch courses from DB
-        const fetchedCourses = await getCourses(firebaseUser.uid)
         setCourseList(fetchedCourses)
 
       } catch (error) {
@@ -116,7 +120,9 @@ export default function DashboardPage() {
     return Math.round((completedSubmodules / totalSubmodules) * 100)
   }
 
-  if (!user || isAuthLoading) return null
+  if (isAuthLoading || !user) {
+    return <LoadingScreen />
+  }
 
   return (
     <div className="min-h-screen bg-background">

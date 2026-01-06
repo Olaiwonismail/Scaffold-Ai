@@ -25,27 +25,18 @@ import { auth } from "@/lib/firebase"
 
 export default function LandingPage() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(true)
-
+  // Optimization: Removed blocking loading state to show landing page immediately
+  // while checking auth in background.
+  
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         router.push("/dashboard")
-      } else {
-        setIsLoading(false)
       }
     })
 
     return () => unsubscribe()
   }, [router])
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-foreground">Loading...</div>
-      </div>
-    )
-  }
 
   const features = [
     {
