@@ -142,7 +142,7 @@ async def upload_pdfs(
                 saved_files.append(file.filename)
 
             # Pass the temp_dir and user_id to processing functions
-            data = await create_outline(temp_dir, youtube_urls)
+            data = await create_outline(temp_dir, youtube_urls, user_id)
             result = await load_directory(temp_dir, youtube_urls, user_id)
             
         finally:
@@ -153,7 +153,7 @@ async def upload_pdfs(
         # Only YouTube URLs provided
         temp_dir = tempfile.mkdtemp(prefix="youtube_only_")
         try:
-            data = await create_outline(temp_dir, youtube_urls)
+            data = await create_outline(temp_dir, youtube_urls, user_id)
             result = await load_directory(temp_dir, youtube_urls, user_id)
         finally:
             if temp_dir:
@@ -210,7 +210,7 @@ async def update_outline(
                 saved_files.append(file.filename)
 
             # Merge outlines and add new documents
-            merged_outline = await merge_outlines(temp_dir, youtube_urls, existing_outline_data)
+            merged_outline = await merge_outlines(temp_dir, youtube_urls, existing_outline_data, user_id)
             result = await load_directory(temp_dir, youtube_urls, user_id)
             
         finally:
@@ -220,7 +220,7 @@ async def update_outline(
         # Only YouTube URLs
         temp_dir = tempfile.mkdtemp(prefix="youtube_update_")
         try:
-            merged_outline = await merge_outlines(temp_dir, youtube_urls, existing_outline_data)
+            merged_outline = await merge_outlines(temp_dir, youtube_urls, existing_outline_data, user_id)
             result = await load_directory(temp_dir, youtube_urls, user_id)
         finally:
             if temp_dir:

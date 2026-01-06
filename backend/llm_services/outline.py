@@ -13,7 +13,7 @@ from tqdm.asyncio import tqdm
 agent = create_agent(model, tools=[submit_outline], middleware=[prompt_with_context])
 import math
 
-async def get_batch_summary(agent, batch_text: str, batch_id: int) -> str:
+async def get_batch_summary(agent, batch_text: str, batch_id: int, user_id: str = None) -> str:
     """Helper: Asks the agent to summarize the themes in a chunk of text."""
     query = f"""Scan the following text content and list the Key Topics, Themes, and Concepts found. 
     Be concise. This is part {batch_id} of a larger document set.
@@ -27,7 +27,7 @@ async def get_batch_summary(agent, batch_text: str, batch_id: int) -> str:
     print(f"   ... Analyzing Batch {batch_id} ...")
     
     async for step in agent.astream( # Assuming astream for async, or use stream if synchronous wrapper
-        {"messages": [{"role": "user", "content": query}]},
+        {"messages": [{"role": "user", "content": query}], "user_id": user_id},
         stream_mode="values",
     ):
         last_msg = step["messages"][-1]
@@ -36,9 +36,9 @@ async def get_batch_summary(agent, batch_text: str, batch_id: int) -> str:
             
     return response_content
 
-async def create_outline(dir: str, youtube_urls: List[str] = None) -> Optional[DocumentOutline]:
+async def create_outline(dir: str, youtube_urls: List[str] = None, user_id: str = None) -> Optional[DocumentOutline]:
     """✅ Scalable Outline Creator (Map-Reduce)"""
-    print("🚀 Processing ALL files...")
+    print(f"🚀 Processing ALL files for user: {user_id}...")
     
     # 1. Get ALL file chunks
     all_chunks = await chunk_directory(dir, youtube_urls)
@@ -61,7 +61,7 @@ async def create_outline(dir: str, youtube_urls: List[str] = None) -> Optional[D
         # Check if adding this file exceeds our batch limit
         if len(current_batch_text) + len(formatted_text) > MAX_BATCH_CHARS:
             # Batch is full -> Summarize it
-            summary = await get_batch_summary(agent, current_batch_text, batch_count)
+            summary = await get_batch_summary(agent, current_batch_text, batch_count, user_id)
             file_summaries.append(f"--- BATCH {batch_count} SUMMARY ---\n{summary}")
             
             # Reset
@@ -72,7 +72,7 @@ async def create_outline(dir: str, youtube_urls: List[str] = None) -> Optional[D
 
     # Process the final remaining batch
     if current_batch_text:
-        summary = await get_batch_summary(agent, current_batch_text, batch_count)
+        summary = await get_batch_summary(agent, current_batch_text, batch_count, user_id)
         file_summaries.append(f"--- BATCH {batch_count} SUMMARY ---\n{summary}")
 
     # Combine all summaries
@@ -99,7 +99,7 @@ SUMMARIES FROM ALL FILES:
 
     # Note: Assuming 'agent' is available in scope or passed in
     async for step in agent.astream(
-        {"messages": [{"role": "user", "content": query}]},
+        {"messages": [{"role": "user", "content": query}], "user_id": user_id},
         stream_mode="values",
     ):
         last_message = step["messages"][-1]
@@ -142,7 +142,8 @@ SUMMARIES FROM ALL FILES:
 async def merge_outlines(
     dir: str, 
     youtube_urls: List[str] = None, 
-    existing_outline: Dict = None
+    existing_outline: Dict = None,
+    user_id: str = None
 ) -> Optional[DocumentOutline]:
     """
     Merge new content with an existing outline using LLM-assisted intelligent merging.
@@ -152,7 +153,7 @@ async def merge_outlines(
     2. Summarizes the new content
     3. Uses LLM to intelligently merge with existing outline (deduplicating, reorganizing)
     """
-    print("🔄 Processing NEW files for outline merge...")
+    print(f"🔄 Processing NEW files for outline merge (user: {user_id})...")
     
     # 1. Get chunks from new files
     all_chunks = await chunk_directory(dir, youtube_urls)
@@ -177,7 +178,7 @@ async def merge_outlines(
         formatted_text = f"\n\n=== NEW SOURCE: {filename} ===\n{chunk_text}"
         
         if len(current_batch_text) + len(formatted_text) > MAX_BATCH_CHARS:
-            summary = await get_batch_summary(agent, current_batch_text, batch_count)
+            summary = await get_batch_summary(agent, current_batch_text, batch_count, user_id)
             new_summaries.append(f"--- NEW BATCH {batch_count} SUMMARY ---\n{summary}")
             batch_count += 1
             current_batch_text = formatted_text
@@ -185,7 +186,7 @@ async def merge_outlines(
             current_batch_text += formatted_text
 
     if current_batch_text:
-        summary = await get_batch_summary(agent, current_batch_text, batch_count)
+        summary = await get_batch_summary(agent, current_batch_text, batch_count, user_id)
         new_summaries.append(f"--- NEW BATCH {batch_count} SUMMARY ---\n{summary}")
 
     new_context = "\n\n".join(new_summaries)
@@ -228,7 +229,7 @@ INSTRUCTIONS:
     merged_outline = None
 
     async for step in agent.astream(
-        {"messages": [{"role": "user", "content": merge_query}]},
+        {"messages": [{"role": "user", "content": merge_query}], "user_id": user_id},
         stream_mode="values",
     ):
         last_message = step["messages"][-1]

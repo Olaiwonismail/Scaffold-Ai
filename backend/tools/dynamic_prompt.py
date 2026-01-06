@@ -8,6 +8,8 @@ def prompt_with_context(request: ModelRequest) -> str:
     last_query = request.state["messages"][-1].text
     user_id = request.state.get("user_id")
     
+    print(f"🔍 last_query (len={len(last_query) if last_query else 0}): {last_query[:500] if last_query else 'None'}...")
+    
     # Safety: Truncate query if too long (e.g. if an agent passes a summary as a query)
     # Gemini embeddings will fail on massive inputs (50k+ chars)
     search_query = last_query[:2000] if last_query else ""

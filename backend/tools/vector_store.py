@@ -21,15 +21,29 @@ client = QdrantClient(
 # Fixed size for Gemini Embeddings - avoids startup API call failure
 vector_size = 768 
 
-# 3. Create the collection ON THE CLOUD if it doesn't exist
-if not client.collection_exists(COLLECTION_NAME):
+# 3. Create or recreate the collection ON THE CLOUD
+# Check if existing collection has wrong dimensions and recreate if needed
+needs_recreate = False
+if client.collection_exists(COLLECTION_NAME):
+    collection_info = client.get_collection(COLLECTION_NAME)
+    existing_size = collection_info.config.params.vectors.size
+    if existing_size != vector_size:
+        print(f"⚠️ Collection has {existing_size} dimensions but embeddings are {vector_size}. Recreating...")
+        needs_recreate = True
+    else:
+        print(f"Collection '{COLLECTION_NAME}' already exists on Cloud.")
+else:
+    needs_recreate = True
     print(f"Creating collection '{COLLECTION_NAME}' on Cloud...")
+
+if needs_recreate:
+    if client.collection_exists(COLLECTION_NAME):
+        client.delete_collection(COLLECTION_NAME)
     client.create_collection(
         collection_name=COLLECTION_NAME,
         vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE)
     )
-else:
-    print(f"Collection '{COLLECTION_NAME}' already exists on Cloud.")
+    print(f"✅ Collection '{COLLECTION_NAME}' created with {vector_size} dimensions.")
 
 # 4. Initialize Vector Store using the SAME client
 vector_store = QdrantVectorStore(
