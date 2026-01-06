@@ -68,11 +68,6 @@ export default function OnboardingPage() {
     }
   }
 
-  const getLevelLabel = (value: number) => {
-    const labels = ["Beginner", "Elementary", "Intermediate", "Advanced", "Expert"]
-    return labels[Math.floor((value - 1) / 2)] || "Expert"
-  }
-
   return (
     <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
       <motion.div
@@ -100,7 +95,7 @@ export default function OnboardingPage() {
                 <Label htmlFor="analogy" className="text-sm font-medium">What are your interests?</Label>
                 <Textarea
                   id="analogy"
-                  placeholder="e.g., I like basketball, music, cooking..."
+                  placeholder="e.g., I learn best with step-by-step breakdowns..."
                   value={analogy}
                   onChange={(e) => setAnalogy(e.target.value)}
                   required
@@ -112,7 +107,6 @@ export default function OnboardingPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium">Learning pace</Label>
-                  <span className="text-xs font-medium text-primary">{getLevelLabel(adaptLevel[0])}</span>
                 </div>
                 <Slider 
                   value={adaptLevel} 
@@ -123,8 +117,8 @@ export default function OnboardingPage() {
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Slow</span>
-                  <span>Fast</span>
+                  <span>Descriptive</span>
+                  <span>Concise</span>
                 </div>
               </div>
 
