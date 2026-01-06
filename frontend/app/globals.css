@@ -48,8 +48,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 260 10% 20%;
 
-    --primary: 260 64% 86%; /* Dusty Lavender #C6B1F0 */
-    --primary-foreground: 260 40% 20%;
+    --primary: 260 30% 59%; /* Purple #8E7AB5 */
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 210 75% 84%; /* Mist Blue #B9D7F5 */
     --secondary-foreground: 210 40% 20%;
