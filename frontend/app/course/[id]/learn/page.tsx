@@ -30,7 +30,7 @@ export default function LearnPage() {
   const [slides, setSlides] = useState<LessonPhase[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [activePanel, setActivePanel] = useState<"notes" | "chat">("notes")
+  const [activePanel, setActivePanel] = useState<"notes" | "chat" | null>(null)
   const [noteContent, setNoteContent] = useState("")
   const [isNoteLoading, setIsNoteLoading] = useState(false)
   const [isSavingNote, setIsSavingNote] = useState(false)
@@ -223,6 +223,10 @@ export default function LearnPage() {
     setNoteContent("")
     loadSlides(moduleIdx, subModuleIdx)
     router.replace(`/course/${params.id}/learn?module=${moduleIdx}&submodule=${subModuleIdx}`)
+    // Close sidebar on mobile after selection
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false)
+    }
   }
 
   const handleSaveNote = async () => {
@@ -285,11 +289,11 @@ export default function LearnPage() {
   const isLastSlide = currentSlideIndex === slides.length - 1
 
   const NotesPanel = () => (
-    <div className="h-full flex flex-col gap-3 p-3 sm:p-4">
+    <div className="h-full flex flex-col gap-2 sm:gap-3 p-3 sm:p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">Notes</p>
-          <p className="text-xs text-muted-foreground line-clamp-2">
+          <p className="text-xs text-muted-foreground line-clamp-1 sm:line-clamp-2">
             {currentModule?.title} • {currentSubModule?.title}
           </p>
         </div>
@@ -300,12 +304,12 @@ export default function LearnPage() {
       <Textarea
         value={noteContent}
         onChange={(e) => setNoteContent(e.target.value)}
-        placeholder="Capture your takeaways for this sub-module"
+        placeholder="Capture your takeaways..."
         disabled={isNoteLoading || isSavingNote}
-        className="flex-1 min-h-[160px]"
+        className="flex-1 min-h-[80px] sm:min-h-[160px] resize-none"
       />
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground line-clamp-1">Saved to your account in MongoDB</p>
+        <p className="text-xs text-muted-foreground line-clamp-1"></p>
         <Button size="sm" onClick={handleSaveNote} disabled={isSavingNote || isNoteLoading}>
           {isSavingNote ? "Saving..." : "Save notes"}
         </Button>
@@ -320,51 +324,31 @@ export default function LearnPage() {
       <div className="h-screen bg-background flex flex-col">
         {/* Header */}
         <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm flex-shrink-0 z-40">
-          <div className="px-3 sm:px-4 py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <Button
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-2 h-9 sm:h-10"
+                className="flex items-center gap-1 sm:gap-2 h-8 sm:h-10 px-2 sm:px-3"
                 onClick={() => setSidebarOpen((v) => !v)}
                 aria-label="Toggle outline sidebar"
               >
                 {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-                <span className="text-xs sm:text-sm">Outline</span>
+                <span className="hidden sm:inline text-xs sm:text-sm">Outline</span>
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => router.push(`/course/${params.id}`)} className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0">
+              <Button variant="ghost" size="icon" onClick={() => router.push(`/course/${params.id}`)} className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
                 <Home className="w-4 h-4" />
               </Button>
-              <div className="hidden sm:block min-w-0">
+              <div className="min-w-0 flex-1">
                 <h1 className="font-bold text-foreground text-xs sm:text-sm truncate">{currentModule?.title}</h1>
-                <p className="text-xs text-muted-foreground truncate">{currentSubModule?.title}</p>
+                <p className="text-xs text-muted-foreground truncate hidden sm:block">{currentSubModule?.title}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {currentSlideIndex + 1}/{slides.length}
               </span>
             </div>
-          </div>
-          {/* Mobile top toggle */}
-          <div className="px-3 sm:px-4 pb-3 sm:hidden flex items-center gap-2">
-            <Button
-              variant={activePanel === "notes" ? "default" : "outline"}
-              size="sm"
-              className="flex-1"
-              onClick={() => setActivePanel("notes")}
-            >
-              Notes
-            </Button>
-            <Button
-              variant={activePanel === "chat" ? "default" : "outline"}
-              size="sm"
-              className="flex-1"
-              onClick={() => setActivePanel("chat")}
-            >
-              Chatbot
-              <MessageSquare className="w-4 h-4 ml-2" />
-            </Button>
           </div>
         </header>
 
@@ -442,8 +426,10 @@ export default function LearnPage() {
           </AnimatePresence>
 
           {/* Center - Canvas/Slides */}
-          <main className="flex-1 flex flex-col overflow-hidden">
-            <div className={`flex-1 overflow-y-auto p-3 sm:p-6 ${activePanel === "chat" ? "hidden lg:block" : ""}`}>
+          <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+            {/* Slide Content - visible on desktop always, on mobile only when not in chat mode */}
+            {/* On mobile with notes active, limit height to allow notes panel to show */}
+            <div className={`overflow-y-auto p-3 sm:p-6 ${activePanel === "chat" ? "hidden lg:block lg:flex-1" : activePanel === "notes" ? "flex-1 lg:flex-1 min-h-[40vh]" : "flex-1"}`}>
               <AnimatePresence mode="wait">
                 {currentSlide && (
                   <motion.div
@@ -506,13 +492,13 @@ export default function LearnPage() {
               </AnimatePresence>
             </div>
 
-            {/* Mobile Notes view */}
-            <div className={`lg:hidden ${activePanel === "notes" ? "block" : "hidden"} border-t border-border/50 bg-card/40`}>
+            {/* Mobile Notes view - shown when notes panel is active, limited height so it doesn't block content */}
+            <div className={`lg:hidden overflow-y-auto max-h-[40vh] ${activePanel === "notes" ? "block" : "hidden"} border-t border-border/50 bg-card/40`}>
               <NotesPanel />
             </div>
 
-            {/* Mobile Chat view */}
-            <div className={`flex-1 overflow-hidden ${activePanel === "chat" ? "block" : "hidden"} lg:hidden`}>
+            {/* Mobile Chat view - takes remaining height when active */}
+            <div className={`flex-1 overflow-hidden lg:hidden ${activePanel === "chat" ? "flex flex-col" : "hidden"}`}>
               <ChatPanel
                   initialMessages={currentSubModule?.chatHistory || []}
                   onMessagesChange={handleChatMessagesChange}
@@ -520,36 +506,35 @@ export default function LearnPage() {
               />
             </div>
 
-            {/* Navigation */}
-            <div className="border-t border-border/50 p-2.5 sm:p-4 flex items-center justify-between bg-card/30 flex-shrink-0 gap-2">
-              <Button variant="outline" onClick={handlePrevSlide} disabled={currentSlideIndex === 0} size="sm" className="h-9 sm:h-10 text-xs sm:text-sm px-2 sm:px-3">
-                <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Previous</span>
+            {/* Navigation - always visible */}
+            <div className="border-t border-border/50 p-2 sm:p-4 flex items-center justify-between bg-card/30 flex-shrink-0 gap-2">
+              <Button variant="outline" onClick={handlePrevSlide} disabled={currentSlideIndex === 0} size="sm" className="h-8 sm:h-10 text-xs sm:text-sm px-2 sm:px-3">
+                <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline ml-1">Previous</span>
               </Button>
 
-              <div className="flex gap-1">
+              <div className="flex gap-1 flex-wrap justify-center max-w-[120px] sm:max-w-none">
                 {slides.map((_, idx) => (
                   <button
                     key={idx}
                     onClick={() => setCurrentSlideIndex(idx)}
-                    className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-colors ${
+                    className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-colors flex-shrink-0 ${
                       idx === currentSlideIndex ? "bg-primary" : "bg-muted"
                     }`}
                   />
                 ))}
               </div>
 
-              <Button onClick={handleNextSlide} size="sm" className="h-9 sm:h-10 text-xs sm:text-sm px-2 sm:px-3">
+              <Button onClick={handleNextSlide} size="sm" className="h-8 sm:h-10 text-xs sm:text-sm px-2 sm:px-3">
                 {isLastSlide ? (
                   <>
                     <span className="hidden sm:inline">Quiz</span>
-                    <span className="sm:hidden">Q</span>
-                    <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 sm:ml-1" />
+                    <span className="sm:hidden">Quiz</span>
+                    <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1" />
                   </>
                 ) : (
                   <>
                     <span className="hidden sm:inline">Next</span>
-                    <span className="sm:hidden">→</span>
                     <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 sm:ml-1" />
                   </>
                 )}
@@ -562,7 +547,7 @@ export default function LearnPage() {
             <div className="h-full flex flex-col">
               <div className="p-3 border-b border-border/50 flex gap-2">
                 <Button
-                  variant={activePanel === "notes" ? "default" : "outline"}
+                  variant={activePanel === "notes" || activePanel === null ? "default" : "outline"}
                   size="sm"
                   className="flex-1"
                   onClick={() => setActivePanel("notes")}
@@ -579,34 +564,34 @@ export default function LearnPage() {
                 </Button>
               </div>
               <div className="flex-1 overflow-hidden">
-                {activePanel === "notes" ? <NotesPanel /> : <ChatPanel
+                {activePanel === "chat" ? <ChatPanel
                   initialMessages={currentSubModule?.chatHistory || []}
                   onMessagesChange={handleChatMessagesChange}
                   userId={auth.currentUser?.uid || ""}
-                />}
+                /> : <NotesPanel />}
               </div>
             </div>
           </aside>
         </div>
 
-        {/* Mobile bottom toggle */}
-        <div className="lg:hidden border-t border-border/50 bg-card/60 backdrop-blur-sm p-2 flex gap-2">
+        {/* Mobile bottom toggle for Notes/Chat */}
+        <div className="lg:hidden border-t border-border/50 bg-card/60 backdrop-blur-sm p-2 flex gap-2 flex-shrink-0">
           <Button
             variant={activePanel === "notes" ? "default" : "outline"}
             size="sm"
-            className="flex-1"
-            onClick={() => setActivePanel("notes")}
+            className="flex-1 h-9"
+            onClick={() => setActivePanel(activePanel === "notes" ? null : "notes")}
           >
             Notes
           </Button>
           <Button
             variant={activePanel === "chat" ? "default" : "outline"}
             size="sm"
-            className="flex-1"
-            onClick={() => setActivePanel("chat")}
+            className="flex-1 h-9"
+            onClick={() => setActivePanel(activePanel === "chat" ? null : "chat")}
           >
-            Chatbot
-            <MessageSquare className="w-4 h-4 ml-2" />
+            <MessageSquare className="w-4 h-4 mr-1" />
+            Chat
           </Button>
         </div>
       </div>
