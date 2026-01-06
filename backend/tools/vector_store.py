@@ -18,7 +18,8 @@ client = QdrantClient(
 )
 
 # 2. Get vector size dynamically
-vector_size = len(embeddings.embed_query("sample text"))
+# Fixed size for Gemini Embeddings - avoids startup API call failure
+vector_size = 768 
 
 # 3. Create the collection ON THE CLOUD if it doesn't exist
 if not client.collection_exists(COLLECTION_NAME):

@@ -8,12 +8,16 @@ def prompt_with_context(request: ModelRequest) -> str:
     last_query = request.state["messages"][-1].text
     user_id = request.state.get("user_id")
     
+    # Safety: Truncate query if too long (e.g. if an agent passes a summary as a query)
+    # Gemini embeddings will fail on massive inputs (50k+ chars)
+    search_query = last_query[:2000] if last_query else ""
+    
     if user_id:
-        retrieved_docs = search_for_user(last_query, user_id)
+        retrieved_docs = search_for_user(search_query, user_id)
     else:
         # Fallback to unfiltered search (should not happen in production)
         print("⚠️ Warning: No user_id provided, using unfiltered search")
-        retrieved_docs = vector_store.similarity_search(last_query)
+        retrieved_docs = vector_store.similarity_search(search_query)
 
     docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
 

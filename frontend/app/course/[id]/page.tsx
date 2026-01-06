@@ -47,7 +47,17 @@ export default function CoursePage() {
         if (user) {
              const existingCourse = await getCourseById(user.uid, params.id as string)
              if (existingCourse) {
-               setCourse(existingCourse)
+               // Clear isNew flags on refresh - new content indicators are session-only
+               const clearedCourse = {
+                 ...existingCourse,
+                 modules: existingCourse.modules.map(m => ({
+                   ...m,
+                   isNew: false,
+                   subModules: m.subModules.map(sub => ({ ...sub, isNew: false }))
+                 }))
+               }
+               await saveCourse(user.uid, clearedCourse)
+               setCourse(clearedCourse)
              } else {
                router.push("/dashboard")
              }
@@ -62,7 +72,12 @@ export default function CoursePage() {
   const handleUploadConfirm = useCallback(
     async (files: File[], urls: string[]) => {
       const currentUser = auth.currentUser
-      if (!currentUser || !course) return
+      if (!currentUser || !course) {
+        console.error("Attempted upload without logged in user or course context")
+        return
+      }
+      
+      console.log("Starting upload for user:", currentUser.uid)
 
       setIsUploading(true)
       setIsProcessing(true)
@@ -71,28 +86,42 @@ export default function CoursePage() {
       try {
         const response = await uploadPDFs(files, urls, currentUser.uid)
 
-        const newFiles: UploadedFile[] = files.map((f) => ({
-          name: f.name,
-          size: f.size,
-          uploadedAt: new Date().toISOString(),
-        }))
+        // Prevent duplicate file entries by checking if name already exists
+        const existingFileNames = new Set(course.files.map(f => f.name))
+        const newFiles: UploadedFile[] = files
+          .filter(f => !existingFileNames.has(f.name))
+          .map((f) => ({
+            name: f.name,
+            size: f.size,
+            uploadedAt: new Date().toISOString(),
+          }))
 
         const addedAt = new Date().toISOString()
-        const newModules: Module[] = response.topics.map((topic) => ({
-          title: topic.title,
-          summary: topic.summary,
-          subtopics: topic.subtopics,
-          subModules: topic.subtopics.map((sub) => ({
-            title: sub,
+        
+        // Prevent duplicate modules by checking if title already exists
+        const existingModuleTitles = new Set(course.modules.map(m => m.title))
+        
+        const newModules: Module[] = response.topics
+          .filter(topic => !existingModuleTitles.has(topic.title))
+          .map((topic) => ({
+            title: topic.title,
+            summary: topic.summary,
+            subtopics: topic.subtopics,
+            subModules: topic.subtopics.map((sub) => ({
+              title: sub,
+              completed: false,
+              slides: undefined,
+              isNew: true,
+              addedAt: addedAt,
+            })),
             completed: false,
-            slides: undefined,
             isNew: true,
             addedAt: addedAt,
-          })),
-          completed: false,
-          isNew: true,
-          addedAt: addedAt,
-        }))
+          }))
+          
+        if (newModules.length === 0) {
+           console.log("No new unique modules found from response")
+        }
 
         const updatedCourse: Course = {
           ...course,
@@ -270,7 +299,7 @@ export default function CoursePage() {
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
-                          className="rounded-lg border border-amber-500 bg-amber-500 p-4"
+                          className="rounded-lg border border-blue-500 bg-blue-500 p-4"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -282,7 +311,7 @@ export default function CoursePage() {
                               </h3>
                               <p className="text-xs sm:text-sm text-white/90">
                                 {course.modules.filter((m) => m.isNew).length} new module{course.modules.filter((m) => m.isNew).length > 1 ? 's' : ''} available. 
-                                Look for the <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-500 bg-white px-1.5 py-0.5 rounded-full mx-1"><Sparkles className="w-2.5 h-2.5" />NEW</span> badge below.
+                                Look for the <span className="inline-flex items-center gap-1 mx-1"><span className="w-2 h-2 rounded-full bg-white"></span> blue dot</span> indicator.
                               </p>
                             </div>
                             <button
@@ -341,10 +370,7 @@ export default function CoursePage() {
                                           {module.title}
                                         </CardTitle>
                                         {module.isNew && (
-                                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30 px-2 py-0.5 rounded-full animate-pulse">
-                                            <Sparkles className="w-3 h-3" />
-                                            NEW
-                                          </span>
+                                          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse flex-shrink-0" />
                                         )}
                                       </div>
                                       <CardDescription className="text-xs sm:text-sm">{module.summary}</CardDescription>
@@ -385,10 +411,7 @@ export default function CoursePage() {
                                             {subModule.title}
                                           </span>
                                           {subModule.isNew && (
-                                            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                                              <Sparkles className="w-2.5 h-2.5" />
-                                              NEW
-                                            </span>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse flex-shrink-0" />
                                           )}
                                         </div>
                                         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
