@@ -168,8 +168,9 @@ export default function LearnPage() {
              setCurrentSubModuleIndex(subModuleIdx)
              setCurrentSlideIndex(0)
 
-             // Now trigger slide loading
+             // Now trigger slide loading and note loading
              loadSlides(moduleIdx, subModuleIdx)
+             loadNote()
 
         } else {
              router.push("/login")
@@ -177,12 +178,13 @@ export default function LearnPage() {
     })
 
     return () => unsubscribe()
-  }, [params.id, searchParams, router, loadSlides])
+  }, [params.id, searchParams, router, loadSlides, loadNote])
 
+  // Also reload notes when module/submodule changes after initial load
   useEffect(() => {
-    if (!course) return
+    if (!course || !auth.currentUser) return
     void loadNote()
-  }, [course, loadNote])
+  }, [currentModuleIndex, currentSubModuleIndex])
 
   const handleNextSlide = () => {
     if (currentSlideIndex < slides.length - 1) {
