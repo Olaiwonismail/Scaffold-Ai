@@ -49,4 +49,3 @@ export async function getCollection<T extends Document>(name: string) {
   const client = await getMongoClient()
   return client.db(dbName).collection<T>(name)
 }
-}

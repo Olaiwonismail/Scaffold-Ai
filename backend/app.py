@@ -57,13 +57,42 @@ def clean_and_parse_json(ai_response_text):
         if json_match:
             clean_text = json_match.group(1)
     
-    # 5. Parse
+    # 5. Fix common escape sequence issues from LLM output
+    # Replace invalid escape sequences with their escaped versions
+    import re
+    
+    def fix_escapes(text):
+        """Fix invalid escape sequences in JSON strings."""
+        # Pattern to find strings in JSON (handles escaped quotes inside)
+        # We need to fix backslashes that aren't valid JSON escapes
+        # Valid JSON escapes: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX
+        
+        # First, fix standalone backslashes that aren't part of valid escapes
+        # This regex finds backslashes not followed by valid escape chars
+        fixed = re.sub(
+            r'\\(?!["\\/bfnrtu])',
+            r'\\\\',
+            text
+        )
+        return fixed
+    
+    clean_text = fix_escapes(clean_text)
+    
+    # 6. Parse with retry
     try:
         return json.loads(clean_text)
     except json.JSONDecodeError as e:
-        print(f"JSON Error: {e}")
-        print(f"Problematic text (first 500 chars): {clean_text[:500]}")
-        return None
+        print(f"JSON Error (first attempt): {e}")
+        
+        # Try a more aggressive fix - escape all problematic characters
+        try:
+            # Sometimes the issue is with control characters
+            clean_text = clean_text.replace('\t', '\\t').replace('\n', '\\n').replace('\r', '\\r')
+            return json.loads(clean_text)
+        except json.JSONDecodeError as e2:
+            print(f"JSON Error (second attempt): {e2}")
+            print(f"Problematic text (first 500 chars): {clean_text[:500]}")
+            return None
 
 # usage:
 # raw_ai_response = client.chat.completions.create(...)
