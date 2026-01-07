@@ -1,3 +1,5 @@
+import { BASE_URL } from "./config"
+
 export interface TopicResponse {
   topics: {
     title: string
@@ -45,7 +47,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
   throw new Error("Max retries exceeded")
 }
 
-// Upload PDFs - using local API route
+// Upload PDFs - direct to backend (bypasses frontend API route)
 export async function uploadPDFs(files: File[], urls: string[] | undefined, userId: string): Promise<TopicResponse> {
   return withRetry(async () => {
     const formData = new FormData()
@@ -57,7 +59,7 @@ export async function uploadPDFs(files: File[], urls: string[] | undefined, user
     }
     formData.append("user_id", userId)
 
-    const response = await fetch("/api/upload", {
+    const response = await fetch(`${BASE_URL}/upload_pdfs/`, {
       method: "POST",
       body: formData,
     })
@@ -71,7 +73,7 @@ export async function uploadPDFs(files: File[], urls: string[] | undefined, user
   })
 }
 
-// Update outline with new files - using local API route
+// Update outline with new files - direct to backend (bypasses frontend API route)
 export async function updateOutline(
   files: File[], 
   urls: string[] | undefined, 
@@ -89,7 +91,7 @@ export async function updateOutline(
     formData.append("user_id", userId)
     formData.append("existing_outline", JSON.stringify(existingOutline))
 
-    const response = await fetch("/api/update-outline", {
+    const response = await fetch(`${BASE_URL}/update_outline/`, {
       method: "POST",
       body: formData,
     })
