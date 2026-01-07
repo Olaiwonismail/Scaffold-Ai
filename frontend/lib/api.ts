@@ -159,7 +159,17 @@ export async function getQuiz(
     })
 
     if (!response.ok) {
-      throw new Error(`Quiz request failed: ${response.statusText}`)
+      // Try to get detailed error message from response
+      let errorMessage = `Quiz request failed: ${response.statusText}`
+      try {
+        const errorData = await response.json()
+        if (errorData.error) {
+          errorMessage = errorData.error
+        }
+      } catch {
+        // Use default error message
+      }
+      throw new Error(errorMessage)
     }
 
     return response.json()

@@ -19,13 +19,24 @@ export async function POST(request: NextRequest) {
     })
 
     if (!response.ok) {
-      throw new Error(`Quiz request failed: ${response.statusText}`)
+      // Try to get detailed error from backend
+      let errorMessage = "Failed to generate quiz"
+      try {
+        const errorData = await response.json()
+        if (errorData.detail) {
+          errorMessage = errorData.detail
+        }
+      } catch {
+        errorMessage = `Quiz request failed: ${response.statusText}`
+      }
+      return NextResponse.json({ error: errorMessage }, { status: response.status })
     }
 
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error) {
     console.error("Quiz error:", error)
-    return NextResponse.json({ error: "Failed to get quiz" }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : "Failed to get quiz"
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

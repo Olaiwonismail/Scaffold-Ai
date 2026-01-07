@@ -35,6 +35,11 @@ app.add_middleware(
 import json
 
 def clean_and_parse_json(ai_response_text):
+    """Parse JSON from AI response with robust error handling."""
+    if not ai_response_text:
+        print("JSON Error: Empty response from AI")
+        return None
+    
     # 1. Remove the "```json" from the start
     clean_text = ai_response_text.replace("```json", "")
     
@@ -44,11 +49,20 @@ def clean_and_parse_json(ai_response_text):
     # 3. Strip leading/trailing whitespace
     clean_text = clean_text.strip()
     
-    # 4. Parse
+    # 4. Try to extract JSON if wrapped in other text
+    if not clean_text.startswith('{') and not clean_text.startswith('['):
+        # Try to find JSON object or array in the text
+        import re
+        json_match = re.search(r'(\{[\s\S]*\}|\[[\s\S]*\])', clean_text)
+        if json_match:
+            clean_text = json_match.group(1)
+    
+    # 5. Parse
     try:
         return json.loads(clean_text)
     except json.JSONDecodeError as e:
         print(f"JSON Error: {e}")
+        print(f"Problematic text (first 500 chars): {clean_text[:500]}")
         return None
 
 # usage:
@@ -78,10 +92,26 @@ class QuizQuery(BaseModel):
 
 @app.post("/quizes")
 async def quizes(payload: QuizQuery):
-    cards = await quiz(payload.text, payload.user_id, payload.question_count)
+    try:
+        cards = await quiz(payload.text, payload.user_id, payload.question_count)
+    except ValueError as e:
+        # Handle missing documents or empty content
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"Quiz generation error: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred while generating the quiz. Please try again.")
+    
     result = clean_and_parse_json(cards)
     if result is None:
-        raise HTTPException(status_code=500, detail="Failed to generate quiz content")
+        raise HTTPException(status_code=500, detail="Failed to parse quiz content. The AI response was not valid JSON.")
+    
+    # Validate quiz structure
+    if not isinstance(result, dict) or 'flashcards' not in result:
+        raise HTTPException(status_code=500, detail="Invalid quiz format received from AI.")
+    
+    if len(result.get('flashcards', [])) == 0:
+        raise HTTPException(status_code=500, detail="No quiz questions were generated. Please try again.")
+    
     return result
 
 

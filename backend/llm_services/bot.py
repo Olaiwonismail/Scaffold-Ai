@@ -146,7 +146,15 @@ async def quiz(query: str, user_id: str, question_count: int = 5):
     """Generate quiz using user-scoped context with configurable question count."""
     # Get user-scoped documents
     retrieved_docs = search_for_user(query, user_id, k=8)  # Get more docs for larger quizzes
+    
+    if not retrieved_docs or len(retrieved_docs) == 0:
+        raise ValueError(f"No study materials found for topic '{query}'. Please upload relevant documents first.")
+    
     docs_content = "\n\n".join(d.page_content for d in retrieved_docs)
+    
+    if not docs_content.strip():
+        raise ValueError("Retrieved documents have no content. Please upload documents with readable text.")
+    
     print(f"Retrieved {len(retrieved_docs)} docs for quiz ({question_count} questions), user: {user_id}")
     
     system_prompt = f'''Convert the user's notes into a set of quizzes.

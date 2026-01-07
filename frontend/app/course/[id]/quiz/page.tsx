@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Home, CheckCircle, XCircle, RotateCcw, BookOpen, Trophy, ArrowRight, Settings, Layers, FileText } from "lucide-react"
+import { Home, CheckCircle, XCircle, RotateCcw, BookOpen, Trophy, ArrowRight, Settings, Layers, FileText, AlertTriangle } from "lucide-react"
 import { getCourseById, saveCourse, getUser } from "@/lib/storage"
 import type { Course, Quiz } from "@/lib/types"
 import { getQuiz } from "@/lib/api"
@@ -30,6 +30,7 @@ export default function QuizPage() {
   const [answers, setAnswers] = useState<Record<number, string>>({})
   const [mode, setMode] = useState<QuizMode>("setup")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [moduleIndex, setModuleIndex] = useState(0)
   const [subModuleIndex, setSubModuleIndex] = useState(0)
   
@@ -69,6 +70,7 @@ export default function QuizPage() {
 
     setIsLoading(true)
     setMode("quiz")
+    setError(null)
 
     try {
       const module = course.modules[moduleIndex]
@@ -79,10 +81,19 @@ export default function QuizPage() {
       const submoduleTitle = quizScope === "submodule" ? subModule?.title || "" : null
 
       const response = await getQuiz(moduleTitle, submoduleTitle, currentUser.uid, questionCount)
+      
+      // Validate quiz response has required data
+      if (!response || !response.flashcards || response.flashcards.length === 0) {
+        throw new Error("No quiz questions were generated. Please ensure you have study materials uploaded for this topic.")
+      }
+      
       setQuiz(response)
     } catch (error) {
       console.error("Failed to load quiz:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate quiz. Please try again."
+      setError(errorMessage)
       setQuiz(null)
+      setMode("setup")
     } finally {
       setIsLoading(false)
     }
@@ -228,6 +239,17 @@ export default function QuizPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    {/* Error Display */}
+                    {error && (
+                      <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-destructive">Quiz Generation Failed</p>
+                          <p className="text-sm text-muted-foreground">{error}</p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Quiz Scope Selection */}
                     <div className="space-y-3">
                       <label className="text-sm font-medium text-foreground">Quiz Scope</label>
