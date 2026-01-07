@@ -110,9 +110,13 @@ export default function LearnPage() {
     }
   }, [params.id])
 
-  const loadNote = useCallback(async () => {
+  const loadNote = useCallback(async (courseIdOverride?: string, moduleIdxOverride?: number, subModuleIdxOverride?: number) => {
     const user = auth.currentUser
-    if (!user || !course?.id) return
+    const effectiveCourseId = courseIdOverride ?? course?.id
+    const effectiveModuleIdx = moduleIdxOverride ?? currentModuleIndex
+    const effectiveSubModuleIdx = subModuleIdxOverride ?? currentSubModuleIndex
+    
+    if (!user || !effectiveCourseId) return
 
     setIsNoteLoading(true)
     setNoteStatus(null)
@@ -121,9 +125,9 @@ export default function LearnPage() {
     try {
       const params = new URLSearchParams({
         uid: user.uid,
-        courseId: course.id,
-        moduleIndex: currentModuleIndex.toString(),
-        subModuleIndex: currentSubModuleIndex.toString(),
+        courseId: effectiveCourseId,
+        moduleIndex: effectiveModuleIdx.toString(),
+        subModuleIndex: effectiveSubModuleIdx.toString(),
       })
 
       const response = await fetch(`/api/notes?${params.toString()}`)
@@ -193,8 +197,9 @@ export default function LearnPage() {
              setCurrentSlideIndex(0)
 
              // Now trigger slide loading and note loading
+             // Pass courseId directly to avoid race condition with state update
              loadSlides(moduleIdx, subModuleIdx)
-             loadNote()
+             loadNote(existingCourse.id, moduleIdx, subModuleIdx)
 
         } else {
              router.push("/login")
@@ -207,8 +212,9 @@ export default function LearnPage() {
   // Also reload notes when module/submodule changes after initial load
   useEffect(() => {
     if (!course || !auth.currentUser) return
-    void loadNote()
-  }, [currentModuleIndex, currentSubModuleIndex])
+    // Use the current state values explicitly
+    void loadNote(course.id, currentModuleIndex, currentSubModuleIndex)
+  }, [course, currentModuleIndex, currentSubModuleIndex, loadNote])
 
   const handleNextSlide = () => {
     if (currentSlideIndex < slides.length - 1) {
@@ -248,6 +254,10 @@ export default function LearnPage() {
     setCurrentSlideIndex(0)
     setNoteContent("")
     loadSlides(moduleIdx, subModuleIdx)
+    // Explicitly load notes with the new indices to avoid stale closure issues
+    if (course?.id) {
+      loadNote(course.id, moduleIdx, subModuleIdx)
+    }
     router.replace(`/course/${params.id}/learn?module=${moduleIdx}&submodule=${subModuleIdx}`)
     // Close sidebar on mobile after selection
     if (window.innerWidth < 768) {
