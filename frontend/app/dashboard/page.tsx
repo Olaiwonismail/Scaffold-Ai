@@ -16,11 +16,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LoadingScreen } from "@/components/loading-screen"
-import { BookOpen, Plus, LogOut, GraduationCap, User, Settings } from "lucide-react"
+import { BookOpen, Plus, LogOut, GraduationCap, User, Settings, Trash2 } from "lucide-react"
 import {
   getUser,
   getCourses,
   saveCourse,
+  deleteCourse,
   generateId,
 } from "@/lib/storage"
 import type { User as UserType, Course } from "@/lib/types"
@@ -34,6 +35,8 @@ export default function DashboardPage() {
   const [newCourseTitle, setNewCourseTitle] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -107,6 +110,21 @@ export default function DashboardPage() {
 
   const handleEnterCourse = (id: string) => {
     router.push(`/course/${id}`)
+  }
+
+  const handleDeleteCourse = async () => {
+    if (!user || !courseToDelete) return
+    await deleteCourse(user.uid, courseToDelete.id)
+    const updatedList = await getCourses(user.uid)
+    setCourseList(updatedList)
+    setIsDeleteDialogOpen(false)
+    setCourseToDelete(null)
+  }
+
+  const openDeleteDialog = (e: React.MouseEvent, course: Course) => {
+    e.stopPropagation() // Prevent card click
+    setCourseToDelete(course)
+    setIsDeleteDialogOpen(true)
   }
 
   const getCompletionPercentage = (course: Course) => {
@@ -263,9 +281,19 @@ export default function DashboardPage() {
                               />
                             </div>
                           </div>
-                          <Button variant="outline" size="sm" className="w-full text-xs">
-                            Open
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" className="flex-1 text-xs">
+                              Open
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => openDeleteDialog(e, course)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     </motion.div>
@@ -292,6 +320,34 @@ export default function DashboardPage() {
           </div>
         </motion.div>
       </main>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Course</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{courseToDelete?.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 pt-4">
+            <Button 
+              variant="outline" 
+              className="flex-1" 
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              className="flex-1" 
+              onClick={handleDeleteCourse}
+            >
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
