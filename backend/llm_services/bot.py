@@ -1,8 +1,9 @@
 import json
 import re
-from tools.model import model
+from tools.model import model, vision_model
 from tools.dynamic_prompt import prompt_with_context, get_lessons, get_quiz, doc
 from langchain.agents import create_agent
+from langchain_core.messages import HumanMessage
 
 agent = create_agent(model, tools=[], middleware=[prompt_with_context])
 tutor_agent = create_agent(model, tools=[], middleware=[get_lessons])
@@ -46,19 +47,42 @@ async def ask_chatbot(query: str, user_id: str):
 
 
 async def tutor(query: str, adapt: str, analogy: str, user_id: str):
-    """Get tutor content using user-scoped context."""
-    query = (
+    """Get tutor content using user-scoped context with images sent to vision model."""
+    query_text = (
         f"Act as a tutur the user understanding out of ten is {adapt} where 10 is firm grasp "
         f"of the concept and 0 is absolutely no idea what the concept is for analogy here is "
         f"some info about the user {analogy}  if no info is pprovided use a suitable one {query}"
     )
+    
+    # First, get the context via the middleware
     result = tutor_agent.invoke(
-        {"messages": [{"role": "user", "content": query}], "user_id": user_id}
+        {"messages": [{"role": "user", "content": query_text}], "user_id": user_id}
     )
     msgs = result["messages"]
     raw = msgs[-1].content
 
-    images = _extract_image_data_urls(doc.get("item"))
+    # Get images from the retrieved documents
+    images = doc.get("images", []) or _extract_image_data_urls(doc.get("item"))
+    
+    # If we have images, re-invoke with the vision model including images
+    if images:
+        print(f"📷 Sending {len(images)} images to vision model")
+        # Build multimodal content
+        content_parts = [{"type": "text", "text": query_text}]
+        # Limit to first 5 images to avoid context overflow
+        for img_url in images[:5]:
+            if img_url.startswith("data:"):
+                content_parts.append({
+                    "type": "image_url",
+                    "image_url": {"url": img_url}
+                })
+        
+        try:
+            vision_response = vision_model.invoke([HumanMessage(content=content_parts)])
+            raw = vision_response.content
+        except Exception as e:
+            print(f"Vision model error, using text response: {e}")
+    
     try:
         cleaned = raw.replace("```json", "").replace("```", "").strip()
         payload = json.loads(cleaned)

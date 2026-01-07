@@ -46,8 +46,6 @@ export function UploadDialog({ open, onOpenChange, onConfirm, isUploading }: Upl
   const [dragActive, setDragActive] = useState(false)
   const [error, setError] = useState("")
 
-  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + " B"
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB"
@@ -64,13 +62,6 @@ export function UploadDialog({ open, onOpenChange, onConfirm, isUploading }: Upl
     if (nonPdfFiles.length > 0) {
       setError("Only PDF files are supported. Please select PDF files only.")
       return
-    }
-
-    const largeFiles = fileArray.filter(f => f.size > MAX_FILE_SIZE)
-
-    if (largeFiles.length > 0) {
-        setError(`File size limit is 50MB. The following files are too large: ${largeFiles.map(f => f.name).join(", ")}`)
-        return
     }
 
     const newFiles: UploadedFilePreview[] = fileArray.map(file => ({

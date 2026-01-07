@@ -1,6 +1,26 @@
+import json
 from langchain.tools import tool
 from langchain.agents.middleware import dynamic_prompt, ModelRequest
 from tools.vector_store import vector_store, search_for_user
+
+def extract_images_from_docs(retrieved_docs) -> list:
+    """Extract base64 image data URLs from retrieved documents."""
+    images = []
+    for d in retrieved_docs or []:
+        if hasattr(d, "metadata") and isinstance(d.metadata, dict):
+            images_val = d.metadata.get("images")
+            if images_val:
+                if isinstance(images_val, str):
+                    try:
+                        parsed_images = json.loads(images_val)
+                        if isinstance(parsed_images, list):
+                            images.extend(parsed_images)
+                    except json.JSONDecodeError:
+                        pass
+                elif isinstance(images_val, list):
+                    images.extend(images_val)
+    # Deduplicate while preserving order
+    return list(dict.fromkeys(images))
 
 @dynamic_prompt
 def prompt_with_context(request: ModelRequest) -> str:
@@ -30,7 +50,7 @@ def prompt_with_context(request: ModelRequest) -> str:
 
     return system_message
 
-doc = {'item': None}
+doc = {'item': None, 'images': []}
 
 @dynamic_prompt
 def get_lessons(request: ModelRequest) -> str:
@@ -45,7 +65,9 @@ def get_lessons(request: ModelRequest) -> str:
         retrieved_docs = vector_store.similarity_search(last_query)
     
     doc['item'] = retrieved_docs
-    print(f"Retrieved {len(retrieved_docs)} docs for user: {user_id}")
+    # Extract and store images for later use by the LLM
+    doc['images'] = extract_images_from_docs(retrieved_docs)
+    print(f"Retrieved {len(retrieved_docs)} docs with {len(doc['images'])} images for user: {user_id}")
 
     docs_content = "\n\n".join(d.page_content for d in retrieved_docs)
 

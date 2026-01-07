@@ -12,11 +12,6 @@ from tools.vector_store import vector_store, add_documents_for_user
 import fitz  # PyMuPDF
 # from loaders.youtube_utils import process_playlist
 
-# Define directory for saving images
-DOCUMENTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "documents")
-IMAGES_DIR = os.path.join(DOCUMENTS_DIR, "images")
-os.makedirs(IMAGES_DIR, exist_ok=True)
-
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=2000, chunk_overlap=200, add_start_index=True
 )
@@ -28,17 +23,16 @@ print(f"THE TYPE IS: {type(vector_store)}")
 print("--------------------------------------------------")
 
 def extract_pdf_images_and_text(filepath: str) -> List[Document]:
-    """Extract TEXT + EMBEDDED IMAGES (saved to disk, paths in metadata)"""
+    """Extract TEXT + EMBEDDED IMAGES (stored as base64 data URLs in metadata)"""
     doc = fitz.open(filepath)
     documents = []
     
     pdf_filename = os.path.basename(filepath)
-    pdf_name_stem = os.path.splitext(pdf_filename)[0]
     
     for page_num, page in enumerate(doc):
         page_text = page.get_text().strip()
         
-        # Extract images
+        # Extract images as base64 data URLs
         images = []
         image_list = page.get_images(full=True)
         if image_list:
@@ -49,21 +43,18 @@ def extract_pdf_images_and_text(filepath: str) -> List[Document]:
                     image_bytes = base_image["image"]
                     image_ext = base_image.get("ext", "png")
                     
-                    # Save image to disk
-                    image_name = f"{pdf_name_stem}_p{page_num+1}_{idx}.{image_ext}"
-                    image_path = os.path.join(IMAGES_DIR, image_name)
-                    
-                    with open(image_path, "wb") as img_file:
-                        img_file.write(image_bytes)
-                    
-                    # Store relative URL path
-                    image_url = f"/images/{image_name}"
-                    images.append(image_url)
+                    # Convert to base64 data URL
+                    mime_type = f"image/{image_ext}"
+                    if image_ext == "jpg":
+                        mime_type = "image/jpeg"
+                    base64_data = base64.b64encode(image_bytes).decode('utf-8')
+                    data_url = f"data:{mime_type};base64,{base64_data}"
+                    images.append(data_url)
                 except Exception as e:
                     print(f"Error extracting image: {e}")
         
         # Create document with text and images in metadata
-        # Serialize images list to JSON string for ChromaDB compatibility
+        # Serialize images list to JSON string for vector DB compatibility
         metadata = {"source": filepath, "page": page_num + 1, "images": json.dumps(images)}
         documents.append(Document(page_content=f"[Page {page_num+1}]\n{page_text}", metadata=metadata))
     

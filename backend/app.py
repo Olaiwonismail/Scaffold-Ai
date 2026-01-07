@@ -9,11 +9,8 @@ import asyncio
 import json
 from loaders.multiple_file import load_directory
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
-
-MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024 # 50MB
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,12 +19,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Mount static files for images
-DOCUMENTS_DIR = os.path.join(os.path.dirname(__file__), "documents")
-IMAGES_DIR = os.path.join(DOCUMENTS_DIR, "images")
-os.makedirs(IMAGES_DIR, exist_ok=True)
-app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
 
 # query ="""topic: Algebra of Complex Numbers ,subtopic : Multiplication"""
 # tutor(query)
@@ -131,11 +122,6 @@ async def upload_pdfs(
                         detail=f"File '{file.filename}' is not a PDF."
                     )
                 contents = await file.read()
-                if len(contents) > MAX_FILE_SIZE_BYTES:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"File '{file.filename}' exceeds the 50MB size limit."
-                    )
                 file_path = os.path.join(temp_dir, file.filename)
                 with open(file_path, "wb") as f:
                     f.write(contents)
@@ -199,11 +185,6 @@ async def update_outline(
                         detail=f"File '{file.filename}' is not a PDF."
                     )
                 contents = await file.read()
-                if len(contents) > MAX_FILE_SIZE_BYTES:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"File '{file.filename}' exceeds the 50MB size limit."
-                    )
                 file_path = os.path.join(temp_dir, file.filename)
                 with open(file_path, "wb") as f:
                     f.write(contents)
