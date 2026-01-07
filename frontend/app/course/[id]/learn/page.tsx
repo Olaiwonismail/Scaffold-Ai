@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -36,20 +36,37 @@ export default function LearnPage() {
   const [isSavingNote, setIsSavingNote] = useState(false)
   const [noteStatus, setNoteStatus] = useState<string | null>(null)
 
+  // Prevent duplicate API calls
+  const loadingSlidesRef = useRef(false)
+  const lastLoadedRef = useRef<string | null>(null)
+
   const loadSlides = useCallback(async (moduleIndex: number, subModuleIndex: number) => {
-    // Need fresh course data because previous updates might have saved slides to it
+    // Prevent duplicate calls for the same module/submodule
+    const loadKey = `${params.id}-${moduleIndex}-${subModuleIndex}`
+    if (loadingSlidesRef.current || lastLoadedRef.current === loadKey) return
+    loadingSlidesRef.current = true
+
     const currentUser = auth.currentUser
-    if (!currentUser) return
+    if (!currentUser) {
+      loadingSlidesRef.current = false
+      return
+    }
 
     // We fetch the course from DB to check if slides exist
     const existingCourse = await getCourseById(currentUser.uid, params.id as string)
     if (!existingCourse) return
 
     const module = existingCourse.modules[moduleIndex]
-    if (!module) return
+    if (!module) {
+      loadingSlidesRef.current = false
+      return
+    }
 
     const subModule = module.subModules[subModuleIndex]
-    if (!subModule) return
+    if (!subModule) {
+      loadingSlidesRef.current = false
+      return
+    }
 
     // Check if slides are already saved in the course object
     if (subModule.slides && subModule.slides.length > 0) {
@@ -57,6 +74,8 @@ export default function LearnPage() {
       setIsLoading(false)
       // Update local state course just in case
       setCourse(existingCourse)
+      loadingSlidesRef.current = false
+      lastLoadedRef.current = `${params.id}-${moduleIndex}-${subModuleIndex}`
       return
     }
 
@@ -86,6 +105,8 @@ export default function LearnPage() {
       setSlides([])
     } finally {
       setIsLoading(false)
+      loadingSlidesRef.current = false
+      lastLoadedRef.current = `${params.id}-${moduleIndex}-${subModuleIndex}`
     }
   }, [params.id])
 

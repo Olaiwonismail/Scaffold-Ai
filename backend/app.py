@@ -78,15 +78,21 @@ class QuizQuery(BaseModel):
 
 @app.post("/quizes")
 async def quizes(payload: QuizQuery):
-    cards = await quiz(payload.text, payload.user_id, payload.question_count) 
-    return clean_and_parse_json(cards)
+    cards = await quiz(payload.text, payload.user_id, payload.question_count)
+    result = clean_and_parse_json(cards)
+    if result is None:
+        raise HTTPException(status_code=500, detail="Failed to generate quiz content")
+    return result
 
 
 @app.post("/tutor")
 async def tutor_endpoint(payload: Query):
     data = await tutor(payload.text, payload.adapt, payload.analogy, payload.user_id)
     print(payload)
-    return clean_and_parse_json(data)
+    result = clean_and_parse_json(data)
+    if result is None:
+        raise HTTPException(status_code=500, detail="Failed to generate lesson content")
+    return result
 
 @app.post('/chatbot')    
 async def chatbot(payload: QueryB):

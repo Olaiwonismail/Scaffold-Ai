@@ -30,17 +30,15 @@ export interface QuizResponse {
   }[]
 }
 
-// Retry wrapper for API calls
-async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+// Retry wrapper for API calls - only retries on network errors
+async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
   for (let i = 0; i < retries; i++) {
     try {
-      const result = await fn()
-      if (result === null || result === undefined) {
-        throw new Error("Null response")
-      }
-      return result
+      return await fn()
     } catch (error) {
-      if (i === retries - 1) throw error
+      // Only retry on network errors, not on server responses
+      const isNetworkError = error instanceof TypeError && error.message.includes("fetch")
+      if (i === retries - 1 || !isNetworkError) throw error
       await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)))
     }
   }

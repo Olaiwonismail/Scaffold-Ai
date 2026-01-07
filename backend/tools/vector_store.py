@@ -52,6 +52,20 @@ vector_store = QdrantVectorStore(
     embedding=embeddings,
 )
 
+# 5. Create payload index for user_id filtering (required by Qdrant for filtered searches)
+try:
+    from qdrant_client.models import PayloadSchemaType
+    client.create_payload_index(
+        collection_name=COLLECTION_NAME,
+        field_name="metadata.user_id",
+        field_schema=PayloadSchemaType.KEYWORD,
+    )
+    print("✅ Created payload index for metadata.user_id")
+except Exception as e:
+    # Index might already exist
+    if "already exists" not in str(e).lower():
+        print(f"⚠️ Payload index warning: {e}")
+
 print("Vector Store successfully connected to Cloud!")
 
 

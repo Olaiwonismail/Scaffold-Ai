@@ -1,74 +1,114 @@
 import json
 import re
 from tools.model import model, vision_model
-from tools.dynamic_prompt import prompt_with_context, get_lessons, get_quiz, doc
-from langchain.agents import create_agent
-from langchain_core.messages import HumanMessage
-
-agent = create_agent(model, tools=[], middleware=[prompt_with_context])
-tutor_agent = create_agent(model, tools=[], middleware=[get_lessons])
-quiz_agent = create_agent(model, tools=[], middleware=[get_quiz])
+from tools.vector_store import search_for_user
+from langchain_core.messages import HumanMessage, SystemMessage
 
 
-def _extract_image_data_urls(retrieved_docs):
-    data_urls = []
-    
-    # Extract from metadata
+def _extract_images_from_docs(retrieved_docs):
+    """Extract base64 image data URLs from retrieved documents."""
+    images = []
     for d in retrieved_docs or []:
         if hasattr(d, "metadata") and isinstance(d.metadata, dict):
             images_val = d.metadata.get("images")
             if images_val:
                 if isinstance(images_val, str):
                     try:
-                        images = json.loads(images_val)
-                        if isinstance(images, list):
-                            data_urls.extend(images)
+                        parsed_images = json.loads(images_val)
+                        if isinstance(parsed_images, list):
+                            images.extend(parsed_images)
                     except json.JSONDecodeError:
                         pass
                 elif isinstance(images_val, list):
-                    data_urls.extend(images_val)
+                    images.extend(images_val)
+    # Deduplicate while preserving order
+    return list(dict.fromkeys(images))
 
-    # Extract from text (fallback)
+
+def _extract_image_data_urls(retrieved_docs):
+    """Extract base64 image data URLs from document text content."""
+    data_urls = []
     pattern = re.compile(r"(data:image/[^;]+;base64,[A-Za-z0-9+/=]+)")
     for d in retrieved_docs or []:
         if hasattr(d, "page_content") and d.page_content:
             data_urls.extend(pattern.findall(d.page_content))
-            
     return list(dict.fromkeys(data_urls))  # dedupe, preserve order
 
 
 async def ask_chatbot(query: str, user_id: str):
     """Chat with the AI using user-scoped context."""
     print(f"Chatbot query for user {user_id}: {query}")
-    response = agent.invoke(
-        {"messages": [{"role": "user", "content": query}], "user_id": user_id}
+    
+    # Get user-scoped documents
+    retrieved_docs = search_for_user(query, user_id)
+    docs_content = "\n\n".join(d.page_content for d in retrieved_docs)
+    
+    system_message = (
+        "You are a helpful assistant. Use the following context in your response:\n\n"
+        f"{docs_content}"
     )
-    return response["messages"][1].content
+    
+    response = model.invoke([
+        SystemMessage(content=system_message),
+        HumanMessage(content=query)
+    ])
+    return response.content
 
 
 async def tutor(query: str, adapt: str, analogy: str, user_id: str):
     """Get tutor content using user-scoped context with images sent to vision model."""
     query_text = (
-        f"Act as a tutur the user understanding out of ten is {adapt} where 10 is firm grasp "
-        f"of the concept and 0 is absolutely no idea what the concept is for analogy here is "
-        f"some info about the user {analogy}  if no info is pprovided use a suitable one {query}"
+        f"Act as a tutor. The user's understanding out of ten is {adapt} where 10 is firm grasp "
+        f"of the concept and 0 is absolutely no idea what the concept is. For analogy here is "
+        f"some info about the user: {analogy}. If no info is provided use a suitable one. {query}"
     )
     
-    # First, get the context via the middleware
-    result = tutor_agent.invoke(
-        {"messages": [{"role": "user", "content": query_text}], "user_id": user_id}
-    )
-    msgs = result["messages"]
-    raw = msgs[-1].content
+    # Get user-scoped documents directly
+    retrieved_docs = search_for_user(query_text[:2000], user_id)  # Truncate for embedding
+    docs_content = "\n\n".join(d.page_content for d in retrieved_docs)
+    
+    # Extract images from documents
+    images = _extract_images_from_docs(retrieved_docs) or _extract_image_data_urls(retrieved_docs)
+    print(f"Retrieved {len(retrieved_docs)} docs with {len(images)} images for user: {user_id}")
+    
+    # Build the lesson prompt
+    system_prompt = '''Convert the user's notes into a lesson.
+Output ONLY valid JSON matching the structure below.
 
-    # Get images from the retrieved documents
-    images = doc.get("images", []) or _extract_image_data_urls(doc.get("item"))
+### STRUCTURE:
+{
+  "topic_title": "Topic Name",
+  "lesson_phases": [
+    {
+      "phase_name": "one for each of these: 1. Concept (Analogy), 2. Toolkit (Formulas), 3. Simple Example, 4. Complex Example, 5. Summary",
+      "steps": [
+        {"narration": "Conversational, explaining the 'why'", "board": "Academic content. Use LaTeX inside $$"}
+      ],
+      "source":"add the exact pages and source info was gotten from"
+    }
+  ]
+}
+
+### CRITICAL MATH FORMATTING RULES:
+1. ALL math expressions MUST be wrapped in $$ for display math or $ for inline math
+2. ALWAYS double-escape backslashes in JSON: \\frac, \\sqrt, \\sum, etc.
+3. Use proper LaTeX syntax: \\frac{numerator}{denominator}, \\sqrt{expression}
+4. For superscripts: x^{2} or x^2 (curly braces for multi-char)
+5. For subscripts: x_{1} or x_1
+6. Common symbols: \\pi, \\theta, \\alpha, \\beta, \\infty, \\sum, \\int
+7. Example: "The formula is $$E = mc^{2}$$" or "inline math like $\\pi r^{2}$"
+
+### OTHER RULES:
+1. Use Markdown for text formatting (bold, italic, lists)
+2. Be consistent with math notation throughout
+'''
     
-    # If we have images, re-invoke with the vision model including images
+    full_prompt = f"{system_prompt}\n\nContext:\n{docs_content}\n\nUser Query: {query_text}"
+    
+    # If we have images, use vision model
     if images:
         print(f"📷 Sending {len(images)} images to vision model")
-        # Build multimodal content
-        content_parts = [{"type": "text", "text": query_text}]
+        content_parts = [{"type": "text", "text": full_prompt}]
         # Limit to first 5 images to avoid context overflow
         for img_url in images[:5]:
             if img_url.startswith("data:"):
@@ -78,11 +118,17 @@ async def tutor(query: str, adapt: str, analogy: str, user_id: str):
                 })
         
         try:
-            vision_response = vision_model.invoke([HumanMessage(content=content_parts)])
-            raw = vision_response.content
+            response = vision_model.invoke([HumanMessage(content=content_parts)])
+            raw = response.content
         except Exception as e:
-            print(f"Vision model error, using text response: {e}")
+            print(f"Vision model error: {e}, falling back to text model")
+            response = model.invoke([HumanMessage(content=full_prompt)])
+            raw = response.content
+    else:
+        response = model.invoke([HumanMessage(content=full_prompt)])
+        raw = response.content
     
+    # Try to inject images into the response
     try:
         cleaned = raw.replace("```json", "").replace("```", "").strip()
         payload = json.loads(cleaned)
@@ -98,12 +144,43 @@ async def tutor(query: str, adapt: str, analogy: str, user_id: str):
 
 async def quiz(query: str, user_id: str, question_count: int = 5):
     """Generate quiz using user-scoped context with configurable question count."""
-    # Append question count instruction to the query
-    enhanced_query = f"{query}\n\nIMPORTANT: Generate exactly {question_count} quiz questions."
+    # Get user-scoped documents
+    retrieved_docs = search_for_user(query, user_id, k=8)  # Get more docs for larger quizzes
+    docs_content = "\n\n".join(d.page_content for d in retrieved_docs)
+    print(f"Retrieved {len(retrieved_docs)} docs for quiz ({question_count} questions), user: {user_id}")
     
-    result = quiz_agent.invoke(
-        {"messages": [{"role": "user", "content": enhanced_query}], "user_id": user_id, "question_count": question_count}
-    )
-    msgs = result["messages"]
-    return msgs[-1].content
+    system_prompt = f'''Convert the user's notes into a set of quizzes.
+Output ONLY valid JSON matching the structure below.
+
+### STRUCTURE:
+{{
+  "topic_title": "Topic Name",
+  "flashcards": [
+    {{
+      "question": "Question text",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "answer": "Correct option letter"
+    }}
+  ]
+}}
+
+### CRITICAL MATH FORMATTING RULES:
+1. ALL math expressions MUST be wrapped in $$ for display or $ for inline
+2. ALWAYS double-escape backslashes: \\frac, \\sqrt, \\sum, etc.
+3. Example: "What is $$\\frac{{1}}{{2}} + \\frac{{1}}{{3}}$$?"
+4. Example inline: "If $x = 2$, what is $x^{{2}}$?"
+5. Use proper LaTeX for fractions, roots, powers, Greek letters
+
+### OTHER RULES:
+1. Generate exactly {question_count} MCQs
+2. Each MCQ must have 4 options
+3. Use Markdown for text formatting if needed
+4. Make questions varied in difficulty
+5. Cover different aspects of the topic
+'''
+    
+    full_prompt = f"{system_prompt}\n\nContext:\n{docs_content}\n\nTopic: {query}"
+    
+    response = model.invoke([HumanMessage(content=full_prompt)])
+    return response.content
 
