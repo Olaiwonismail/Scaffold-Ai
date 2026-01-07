@@ -55,10 +55,6 @@ def clean_and_parse_json(ai_response_text):
 # raw_ai_response = client.chat.completions.create(...)
 # lesson_data = clean_and_parse_json(raw_ai_response)
 
-from fastapi import FastAPI
-
-app = FastAPI()
-
 @app.get("/")
 def read_root():
     return {"message": "Hello from FastAPI!"}

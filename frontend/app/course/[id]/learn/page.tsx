@@ -109,6 +109,9 @@ export default function LearnPage() {
       if (response.ok) {
         const payload = await response.json()
         setNoteContent(payload.content ?? "")
+      } else {
+        console.error("Failed to fetch notes:", response.status)
+        setNoteStatus("Failed to load")
       }
     } catch (error) {
       console.error("Failed to load notes", error)
@@ -492,6 +495,17 @@ export default function LearnPage() {
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {!isLoading && !currentSlide && (
+                <div className="flex flex-col items-center justify-center h-full p-6 text-center text-muted-foreground">
+                  <BookOpen className="w-12 h-12 mb-4 opacity-20" />
+                  <p className="text-lg font-semibold mb-2">No content available</p>
+                  <p className="text-sm mb-4">Could not load the lesson content. Please check if the backend is running.</p>
+                  <Button onClick={() => window.location.reload()} variant="outline">
+                    Retry
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Mobile Notes view - shown when notes panel is active, limited height so it doesn't block content */}
