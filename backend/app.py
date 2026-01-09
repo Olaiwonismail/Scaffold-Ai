@@ -53,8 +53,8 @@ def clean_and_parse_json(ai_response_text):
         if json_match:
             clean_text = json_match.group(1)
     
-    # 5. Fix invalid escape sequences
-    clean_text = re.sub(r'\\(?![\"\\/bfnrtu])', r'\\\\', clean_text)
+    # 5. Escape all backslashes to handle LaTeX and other escapes
+    clean_text = clean_text.replace('\\', '\\\\')
     
     # 6. Parse
     try:
