@@ -355,7 +355,7 @@ export default function LearnPage() {
 
   return (
     <>
-      {isLoading && <LoadingScreen message="Generating your personalized lesson" />}
+      {isLoading && <LoadingScreen message="Generating your lesson 😊" />}
 
       <div className="h-screen bg-background flex flex-col">
         {/* Header */}

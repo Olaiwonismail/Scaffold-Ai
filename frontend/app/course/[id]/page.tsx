@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { motion } from "framer-motion"
@@ -9,8 +8,23 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { BookOpen, Upload, FileText, ChevronRight, Home, Trash2, Play, List, File, Menu, X, Sparkles, GraduationCap, Plus } from "lucide-react"
-import { getCourseById, saveCourse, getUser } from "@/lib/storage"
+import {
+  BookOpen,
+  Upload,
+  FileText,
+  ChevronRight,
+  Home,
+  Trash2,
+  Play,
+  List,
+  File,
+  Menu,
+  X,
+  Sparkles,
+  GraduationCap,
+  Plus,
+} from "lucide-react"
+import { getCourseById, saveCourse } from "@/lib/storage"
 import type { Course, Module, UploadedFile } from "@/lib/types"
 import { uploadPDFs } from "@/lib/api"
 import { LoadingScreen } from "@/components/loading-screen"
@@ -31,7 +45,7 @@ export default function CoursePage() {
     const loadCourse = async () => {
       const currentUser = auth.currentUser
       if (!currentUser) {
-         return
+        return
       }
 
       const existingCourse = await getCourseById(currentUser.uid, params.id as string)
@@ -44,26 +58,26 @@ export default function CoursePage() {
 
     // Add listener for auth state to be safe on refresh
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-        if (user) {
-             const existingCourse = await getCourseById(user.uid, params.id as string)
-             if (existingCourse) {
-               // Clear isNew flags on refresh - new content indicators are session-only
-               const clearedCourse = {
-                 ...existingCourse,
-                 modules: existingCourse.modules.map(m => ({
-                   ...m,
-                   isNew: false,
-                   subModules: m.subModules.map(sub => ({ ...sub, isNew: false }))
-                 }))
-               }
-               await saveCourse(user.uid, clearedCourse)
-               setCourse(clearedCourse)
-             } else {
-               router.push("/dashboard")
-             }
+      if (user) {
+        const existingCourse = await getCourseById(user.uid, params.id as string)
+        if (existingCourse) {
+          // Clear isNew flags on refresh - new content indicators are session-only
+          const clearedCourse = {
+            ...existingCourse,
+            modules: existingCourse.modules.map((m) => ({
+              ...m,
+              isNew: false,
+              subModules: m.subModules.map((sub) => ({ ...sub, isNew: false })),
+            })),
+          }
+          await saveCourse(user.uid, clearedCourse)
+          setCourse(clearedCourse)
         } else {
-            router.push("/login")
+          router.push("/dashboard")
         }
+      } else {
+        router.push("/login")
+      }
     })
 
     return () => unsubscribe()
@@ -76,7 +90,7 @@ export default function CoursePage() {
         console.error("Attempted upload without logged in user or course context")
         return
       }
-      
+
       console.log("Starting upload for user:", currentUser.uid)
 
       setIsUploading(true)
@@ -87,9 +101,9 @@ export default function CoursePage() {
         const response = await uploadPDFs(files, urls, currentUser.uid)
 
         // Prevent duplicate file entries by checking if name already exists
-        const existingFileNames = new Set(course.files.map(f => f.name))
+        const existingFileNames = new Set(course.files.map((f) => f.name))
         const newFiles: UploadedFile[] = files
-          .filter(f => !existingFileNames.has(f.name))
+          .filter((f) => !existingFileNames.has(f.name))
           .map((f) => ({
             name: f.name,
             size: f.size,
@@ -97,12 +111,12 @@ export default function CoursePage() {
           }))
 
         const addedAt = new Date().toISOString()
-        
+
         // Prevent duplicate modules by checking if title already exists
-        const existingModuleTitles = new Set(course.modules.map(m => m.title))
-        
+        const existingModuleTitles = new Set(course.modules.map((m) => m.title))
+
         const newModules: Module[] = response.topics
-          .filter(topic => !existingModuleTitles.has(topic.title))
+          .filter((topic) => !existingModuleTitles.has(topic.title))
           .map((topic) => ({
             title: topic.title,
             summary: topic.summary,
@@ -118,9 +132,9 @@ export default function CoursePage() {
             isNew: true,
             addedAt: addedAt,
           }))
-          
+
         if (newModules.length === 0) {
-           console.log("No new unique modules found from response")
+          console.log("No new unique modules found from response")
         }
 
         const updatedCourse: Course = {
@@ -156,24 +170,22 @@ export default function CoursePage() {
     if (course && auth.currentUser) {
       const module = course.modules[moduleIndex]
       const subModule = module?.subModules[subModuleIndex]
-      
+
       if (module?.isNew || subModule?.isNew) {
         const updatedCourse = { ...course }
         updatedCourse.modules[moduleIndex].subModules[subModuleIndex].isNew = false
-        
+
         // If all submodules in this module have been viewed, mark module as not new
-        const allSubmodulesViewed = updatedCourse.modules[moduleIndex].subModules.every(
-          (sub) => !sub.isNew
-        )
+        const allSubmodulesViewed = updatedCourse.modules[moduleIndex].subModules.every((sub) => !sub.isNew)
         if (allSubmodulesViewed) {
           updatedCourse.modules[moduleIndex].isNew = false
         }
-        
+
         await saveCourse(auth.currentUser.uid, updatedCourse)
         setCourse(updatedCourse)
       }
     }
-    
+
     router.push(`/course/${params.id}/learn?module=${moduleIndex}&submodule=${subModuleIndex}`)
   }
 
@@ -202,7 +214,12 @@ export default function CoursePage() {
         <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-40">
           <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <Button variant="ghost" size="icon" onClick={() => router.push("/dashboard")} className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push("/dashboard")}
+                className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"
+              >
                 <Home className="w-4 h-4" />
               </Button>
               <div className="min-w-0">
@@ -212,9 +229,9 @@ export default function CoursePage() {
                 </p>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"
             >
@@ -281,7 +298,9 @@ export default function CoursePage() {
                         <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-3 sm:mb-4">
                           <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
                         </div>
-                        <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1 sm:mb-2">Upload your study materials</h3>
+                        <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1 sm:mb-2">
+                          Upload your study materials
+                        </h3>
                         <p className="text-xs sm:text-sm text-muted-foreground text-center mb-4 max-w-sm">
                           Upload PDF files or add YouTube links to generate your course outline and start learning
                         </p>
@@ -306,12 +325,14 @@ export default function CoursePage() {
                               <Sparkles className="w-5 h-5 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-white text-sm sm:text-base">
-                                New Content Added! 🎉
-                              </h3>
+                              <h3 className="font-semibold text-white text-sm sm:text-base">New Content Added! 🎉</h3>
                               <p className="text-xs sm:text-sm text-white/90">
-                                {course.modules.filter((m) => m.isNew).length} new module{course.modules.filter((m) => m.isNew).length > 1 ? 's' : ''} available. 
-                                Look for the <span className="inline-flex items-center gap-1 mx-1"><span className="w-2 h-2 rounded-full bg-white"></span> blue dot</span> indicator.
+                                {course.modules.filter((m) => m.isNew).length} new module
+                                {course.modules.filter((m) => m.isNew).length > 1 ? "s" : ""} available. Look for the{" "}
+                                <span className="inline-flex items-center gap-1 mx-1">
+                                  <span className="w-2 h-2 rounded-full bg-white"></span> blue dot
+                                </span>{" "}
+                                indicator.
                               </p>
                             </div>
                             <button
@@ -335,8 +356,8 @@ export default function CoursePage() {
                         </CardHeader>
                         <CardContent>
                           <p className="text-xs sm:text-sm text-muted-foreground">
-                            This course covers {course?.modules.length || 0} main topics, each broken down into submodules for
-                            easier learning. Click on any submodule to start learning.
+                            This course covers {course?.modules.length || 0} main topics, each broken down into
+                            submodules for easier learning. Click on any submodule to start learning.
                           </p>
                         </CardContent>
                       </Card>
@@ -352,7 +373,9 @@ export default function CoursePage() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: moduleIndex * 0.1 }}
                             >
-                              <Card className={`border-border/50 bg-card/50 ${allCompleted ? "border-success/50" : ""}`}>
+                              <Card
+                                className={`border-border/50 bg-card/50 ${allCompleted ? "border-success/50" : ""}`}
+                              >
                                 <CardHeader>
                                   <div className="flex items-center gap-2 sm:gap-3">
                                     <div
@@ -360,13 +383,17 @@ export default function CoursePage() {
                                         allCompleted ? "bg-success/10" : "bg-primary/10"
                                       }`}
                                     >
-                                      <span className={`font-bold text-xs sm:text-sm ${allCompleted ? "text-success" : "text-primary"}`}>
+                                      <span
+                                        className={`font-bold text-xs sm:text-sm ${allCompleted ? "text-success" : "text-primary"}`}
+                                      >
                                         {moduleIndex + 1}
                                       </span>
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2">
-                                        <CardTitle className={`text-sm sm:text-lg ${allCompleted ? "text-success" : ""}`}>
+                                        <CardTitle
+                                          className={`text-sm sm:text-lg ${allCompleted ? "text-success" : ""}`}
+                                        >
                                           {module.title}
                                         </CardTitle>
                                         {module.isNew && (
@@ -385,11 +412,11 @@ export default function CoursePage() {
                                 <CardContent>
                                   <div className="space-y-1 sm:space-y-2">
                                     {module.subModules.map((subModule, subIndex) => (
-                                      <motion.button
+                                      <motion.div
                                         key={subModule.title}
                                         whileHover={{ x: 4 }}
                                         onClick={() => handleStartLearning(moduleIndex, subIndex)}
-                                        className={`w-full flex items-center justify-between p-2 sm:p-3 rounded-lg transition-colors ${
+                                        className={`w-full flex items-center justify-between p-2 sm:p-3 rounded-lg transition-colors cursor-pointer group ${
                                           subModule.completed
                                             ? "bg-success/10 hover:bg-success/20"
                                             : "bg-secondary/50 hover:bg-secondary"
@@ -406,7 +433,9 @@ export default function CoursePage() {
                                             {subIndex + 1}
                                           </div>
                                           <span
-                                            className={`text-xs sm:text-sm truncate ${subModule.completed ? "text-success font-medium" : "text-foreground"}`}
+                                            className={`text-xs sm:text-sm truncate ${
+                                              subModule.completed ? "text-success font-medium" : "text-foreground"
+                                            }`}
                                           >
                                             {subModule.title}
                                           </span>
@@ -427,6 +456,7 @@ export default function CoursePage() {
                                           >
                                             <GraduationCap className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
                                           </Button>
+
                                           {subModule.completed ? (
                                             <span className="text-xs text-success">Done</span>
                                           ) : (
@@ -434,10 +464,10 @@ export default function CoursePage() {
                                           )}
                                           <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
                                         </div>
-                                      </motion.button>
+                                      </motion.div>
                                     ))}
                                   </div>
-                                  
+
                                   {/* Module-level Quiz Button */}
                                   <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border/50">
                                     <Button
