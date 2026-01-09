@@ -488,9 +488,9 @@ export default function LearnPage() {
                       <div key={stepIdx} className="space-y-3 sm:space-y-6">
                         {/* Narration */}
                         <div className="bg-card/50 rounded-xl p-3 sm:p-6 border border-border/50">
-                          <p className="text-xs sm:text-base text-foreground leading-relaxed">
+                          <div className="text-xs sm:text-base text-foreground leading-relaxed">
                             <LatexRenderer content={step.narration} />
-                          </p>
+                          </div>
                         </div>
 
                         {/* Board */}
