@@ -76,7 +76,7 @@ export default function LandingPage() {
     },
     {
       icon: Sparkles,
-      title: "Personalized Examples",
+      title: " Personalized Examples",
       description: "Concepts explained using examples from your interests.",
       color: "text-white",
       bgColor: "bg-amber-500",

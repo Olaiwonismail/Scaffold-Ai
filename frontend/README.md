@@ -6,7 +6,7 @@ A beautifully designed, personalized learning platform with a simple interface a
 
 - **Clean Design**: Simple, intuitive interface with pastel colors
 - **Course Management**: Create and manage multiple learning courses
-- **Personalized Learning**: AI-powered lessons adapted to your pace and interests
+- **Learning**: AI-powered lessons adapted to your pace and interests
 - **Progress Tracking**: Visual progress indicators for courses and lessons
 - **Interactive Learning**: Engage with lessons, take quizzes, and get feedback
 

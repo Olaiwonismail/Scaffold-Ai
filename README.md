@@ -4,7 +4,7 @@ Scaffold-Ai is a comprehensive personalized learning platform that leverages Art
 
 ## 🚀 Features
 
-- **Personalized Learning Paths**: AI-generated course outlines and lessons based on user inputs and uploaded documents.
+- ** Learning Paths**: AI-generated course outlines and lessons based on user inputs and uploaded documents.
 - **Interactive AI Tutor**: A chatbot interface for real-time tutoring and doubt resolution.
 - **Dynamic Quizzes**: Automatically generated quizzes to test knowledge and reinforce learning.
 - **Document Integration**: Upload PDFs and provide YouTube URLs to generate context-aware learning materials.
