@@ -139,7 +139,14 @@ Output ONLY valid JSON matching the structure below.
     
     # Try to inject images into the response based on LLM selection
     try:
+        print(f"DEBUG: Raw AI Response: {raw[:500]}...") # Log start of response
+
         cleaned = raw.replace("```json", "").replace("```", "").strip()
+        # Ensure we have something to parse
+        if not cleaned:
+             print("DEBUG: Empty cleaned response")
+             return raw
+
         payload = json.loads(cleaned)
         if isinstance(payload, dict) and "lesson_phases" in payload:
             for phase in payload.get("lesson_phases", []):
@@ -148,11 +155,14 @@ Output ONLY valid JSON matching the structure below.
                     selected_indices = phase.get("image_indices", [])
                     phase_images = []
 
+                    # Safety check: ensure images list exists
+                    safe_images = images if images is not None else []
+
                     if isinstance(selected_indices, list):
                         for idx in selected_indices:
                             # Verify index is an integer and within bounds of the images passed to model
-                            if isinstance(idx, int) and 0 <= idx < len(images) and idx < 5:
-                                phase_images.append(images[idx])
+                            if isinstance(idx, int) and 0 <= idx < len(safe_images) and idx < 5:
+                                phase_images.append(safe_images[idx])
 
                     # Assign the resolved images to the phase
                     phase["images"] = phase_images
@@ -164,7 +174,9 @@ Output ONLY valid JSON matching the structure below.
             return json.dumps(payload)
     except Exception as e:
         print(f"Error processing image selection: {e}")
-        pass  # fallback to original content on parse issues
+        # In case of error, just return the raw response so the user gets *something*
+        # We might miss images, but better than 500
+        return raw
     return raw
 
 
