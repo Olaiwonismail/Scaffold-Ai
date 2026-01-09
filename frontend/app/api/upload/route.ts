@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Uploading files to external API:", files.length, "files for user:", userId)
 
-    const response = await fetch(`${BASE_URL}upload_pdfs/`, {
+    const response = await fetch(`${BASE_URL}/upload_pdfs/`, {
       method: "POST",
       headers: {
         accept: "application/json",

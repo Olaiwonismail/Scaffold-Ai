@@ -1,7 +1,15 @@
 import json
+import re
 from langchain.tools import tool
 from langchain.agents.middleware import dynamic_prompt, ModelRequest
 from tools.vector_store import vector_store, search_for_user
+
+def extract_user_id(text):
+    if not text: return None, text
+    match = re.search(r'\[USER_ID:([a-zA-Z0-9_\-]+)\]', text)
+    if match:
+        return match.group(1), text.replace(match.group(0), "").strip()
+    return None, text
 
 def extract_images_from_docs(retrieved_docs) -> list:
     """Extract base64 image data URLs from retrieved documents."""
@@ -27,6 +35,10 @@ def prompt_with_context(request: ModelRequest) -> str:
     """Inject user-scoped context into state messages."""
     last_query = request.state["messages"][-1].text
     user_id = request.state.get("user_id")
+    
+    # FALLBACK: Try extraction from text
+    if not user_id:
+        user_id, last_query = extract_user_id(last_query)
     
     print(f"🔍 last_query (len={len(last_query) if last_query else 0}): {last_query[:500] if last_query else 'None'}...")
     
@@ -57,6 +69,10 @@ def get_lessons(request: ModelRequest) -> str:
     """Inject user-scoped context into state messages for lessons."""
     last_query = request.state["messages"][-1].text
     user_id = request.state.get("user_id")
+    
+    # FALLBACK: Try extraction from text
+    if not user_id:
+        user_id, last_query = extract_user_id(last_query)
     
     if user_id:
         retrieved_docs = search_for_user(last_query, user_id)
@@ -114,6 +130,10 @@ def get_quiz(request: ModelRequest) -> str:
     last_query = request.state["messages"][-1].text
     user_id = request.state.get("user_id")
     question_count = request.state.get("question_count", 5)
+    
+    # FALLBACK: Try extraction from text
+    if not user_id:
+        user_id, last_query = extract_user_id(last_query)
     
     if user_id:
         retrieved_docs = search_for_user(last_query, user_id, k=8)  # Get more docs for larger quizzes

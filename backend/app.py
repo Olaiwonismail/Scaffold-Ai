@@ -15,11 +15,7 @@ app = FastAPI()
 # CORS configuration - must be added before routes
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://studylabs-beta.vercel.app",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=["*"], # Allow all origins for development
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
@@ -132,7 +128,7 @@ async def chatbot(payload: QueryB):
     
 
 
-@app.post("/upload_pdfs/")
+@app.post("/upload_pdfs")
 async def upload_pdfs(
     files: List[UploadFile] = File(None), 
     urls: str = Form(None),
@@ -186,7 +182,7 @@ async def upload_pdfs(
     return data
 
 
-@app.post("/update_outline/")
+@app.post("/update_outline")
 async def update_outline(
     files: List[UploadFile] = File(None), 
     urls: str = Form(None),

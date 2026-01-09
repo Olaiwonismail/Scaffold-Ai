@@ -15,7 +15,9 @@ import math
 
 async def get_batch_summary(agent, batch_text: str, batch_id: int, user_id: str = None) -> str:
     """Helper: Asks the agent to summarize the themes in a chunk of text."""
-    query = f"""Scan the following text content and list the Key Topics, Themes, and Concepts found. 
+    # Inject user_id for middleware extraction
+    prefix = f"[USER_ID:{user_id}] " if user_id else ""
+    query = f"""{prefix}Scan the following text content and list the Key Topics, Themes, and Concepts found. 
     Be concise. This is part {batch_id} of a larger document set.
     
     TEXT CONTENT:
@@ -81,7 +83,9 @@ async def create_outline(dir: str, youtube_urls: List[str] = None, user_id: str 
 
     # 4. REDUCE PHASE: One LLM Call for Master Outline
     # Now we feed the *Summaries* to the tool, not the raw text.
-    query = f"""Analyze the provided SUMMARIES of a large document set and create a unified Table of Contents.
+    # Inject user_id for middleware extraction
+    prefix = f"[USER_ID:{user_id}] " if user_id else ""
+    query = f"""{prefix}Analyze the provided SUMMARIES of a large document set and create a unified Table of Contents.
 
 IMPORTANT:
 1. Use the 'submit_outline' tool.

@@ -57,7 +57,7 @@ export async function uploadPDFs(files: File[], urls: string[] | undefined, user
     }
     formData.append("user_id", userId)
 
-    const response = await fetch(`${BASE_URL}/upload_pdfs/`, {
+    const response = await fetch(`${BASE_URL}/upload_pdfs`, {
       method: "POST",
       body: formData,
     })
@@ -71,6 +71,7 @@ export async function uploadPDFs(files: File[], urls: string[] | undefined, user
   })
 }
 
+// Update outline with new files - direct to backend (bypasses frontend API route)
 // Update outline with new files - direct to backend (bypasses frontend API route)
 export async function updateOutline(
   files: File[], 
@@ -89,20 +90,19 @@ export async function updateOutline(
     formData.append("user_id", userId)
     formData.append("existing_outline", JSON.stringify(existingOutline))
 
-    const response = await fetch(`${BASE_URL}/update_outline/`, {
-      method: "POST",
-      body: formData,
-    })
+    const response = await fetch(`${BASE_URL}/update_outline`, {
+      method: "POST", // You likely need this
+      body: formData, // You likely need this
+    }); // <--- Added closing brace and parenthesis for fetch
 
     if (!response.ok) {
-      const message = await response.text()
-      throw new Error(`Update outline failed: ${response.status} ${message}`)
+        throw new Error(`Update outline failed: ${response.statusText}`);
     }
 
-    return response.json()
-  })
+    return response.json();
+  }); // <--- Added closing brace and parenthesis for withRetry
 }
-
+  
 // Get tutor content for a submodule - using local API route
 export async function getTutorContent(
   moduleTitle: string,
