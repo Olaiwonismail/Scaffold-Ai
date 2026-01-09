@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Updating outline for user:", userId)
 
-    const response = await fetch(`${BASE_URL}update_outline/`, {
+    const response = await fetch(`${BASE_URL}/update_outline/`, {
       method: "POST",
       headers: {
         accept: "application/json",

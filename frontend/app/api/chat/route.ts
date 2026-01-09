@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "user_id is required" }, { status: 400 })
     }
 
-    const response = await fetch(`${BASE_URL}chatbot`, {
+    const response = await fetch(`${BASE_URL}/chatbot`, {
       method: "POST",
       headers: {
         accept: "application/json",
