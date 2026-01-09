@@ -84,10 +84,19 @@ Output ONLY valid JSON matching the structure below.
       "steps": [
         {"narration": "Conversational, explaining the 'why'", "board": "Academic content. Use LaTeX inside $$"}
       ],
-      "source":"add the exact pages and source info was gotten from"
+      "source":"add the exact pages and source info was gotten from",
+      "image_indices": [0, 2]
     }
   ]
 }
+
+### IMAGE SELECTION RULES:
+1. I have provided a set of images with this request.
+2. For each phase, determine which images (if any) are HIGHLY relevant to that specific phase.
+3. In the "image_indices" field, return the 0-based indices of the selected images (e.g., [0] for the first image, [0, 2] for first and third).
+4. STRICT CRITERIA: Only select an image if it directly visualizes the concept being taught in that phase.
+5. If no image is a strong match, return an empty list [].
+6. DO NOT force a match. It is better to have no image than an irrelevant one.
 
 ### CRITICAL MATH FORMATTING RULES:
 1. ALL math expressions MUST be wrapped in $$ for display math or $ for inline math
@@ -128,16 +137,33 @@ Output ONLY valid JSON matching the structure below.
         response = model.invoke([HumanMessage(content=full_prompt)])
         raw = response.content
     
-    # Try to inject images into the response
+    # Try to inject images into the response based on LLM selection
     try:
         cleaned = raw.replace("```json", "").replace("```", "").strip()
         payload = json.loads(cleaned)
         if isinstance(payload, dict) and "lesson_phases" in payload:
             for phase in payload.get("lesson_phases", []):
                 if isinstance(phase, dict):
-                    phase["images"] = images
+                    # Map indices back to actual image URLs
+                    selected_indices = phase.get("image_indices", [])
+                    phase_images = []
+
+                    if isinstance(selected_indices, list):
+                        for idx in selected_indices:
+                            # Verify index is an integer and within bounds of the images passed to model
+                            if isinstance(idx, int) and 0 <= idx < len(images) and idx < 5:
+                                phase_images.append(images[idx])
+
+                    # Assign the resolved images to the phase
+                    phase["images"] = phase_images
+
+                    # Clean up the indices field from final output (optional, but keeps it clean)
+                    if "image_indices" in phase:
+                        del phase["image_indices"]
+
             return json.dumps(payload)
-    except Exception:
+    except Exception as e:
+        print(f"Error processing image selection: {e}")
         pass  # fallback to original content on parse issues
     return raw
 
