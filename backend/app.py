@@ -7,6 +7,7 @@ import os
 import shutil
 import asyncio
 import json
+import re
 from loaders.multiple_file import load_directory
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -48,12 +49,14 @@ def clean_and_parse_json(ai_response_text):
     # 4. Try to extract JSON if wrapped in other text
     if not clean_text.startswith('{') and not clean_text.startswith('['):
         # Try to find JSON object or array in the text
-        import re
         json_match = re.search(r'(\{[\s\S]*\}|\[[\s\S]*\])', clean_text)
         if json_match:
             clean_text = json_match.group(1)
     
-    # 5. Parse
+    # 5. Fix invalid escape sequences
+    clean_text = re.sub(r'\\(?![\"\\/bfnrtu])', r'\\\\', clean_text)
+    
+    # 6. Parse
     try:
         return json.loads(clean_text)
     except json.JSONDecodeError as e:
