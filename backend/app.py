@@ -86,6 +86,7 @@ class QuizQuery(BaseModel):
     question_count: int = 5  # Default to 5 questions
 
 
+
 @app.post("/quizes")
 async def quizes(payload: QuizQuery):
     try:
