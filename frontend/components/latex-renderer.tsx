@@ -34,7 +34,19 @@ export function LatexRenderer({ content, className = "" }: LatexRendererProps) {
     <div className={`latex-content prose prose-sm dark:prose-invert max-w-none ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkMath]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={[[rehypeKatex, {
+          strict: false,
+          throwOnError: false,
+          errorColor: '#cc0000',
+          macros: {
+            "\\RR": "\\mathbb{R}",
+            "\\NN": "\\mathbb{N}",
+            "\\ZZ": "\\mathbb{Z}",
+            "\\QQ": "\\mathbb{Q}",
+            "\\CC": "\\mathbb{C}",
+          },
+          trust: true,
+        }]]}
         components={{
           // Custom styling for various elements
           p: ({ children }) => <p className="my-2 leading-relaxed">{children}</p>,
@@ -93,7 +105,19 @@ export function InlineMath({ children }: { children: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkMath]}
-      rehypePlugins={[rehypeKatex]}
+      rehypePlugins={[[rehypeKatex, {
+        strict: false,
+        throwOnError: false,
+        errorColor: '#cc0000',
+        macros: {
+          "\\RR": "\\mathbb{R}",
+          "\\NN": "\\mathbb{N}",
+          "\\ZZ": "\\mathbb{Z}",
+          "\\QQ": "\\mathbb{Q}",
+          "\\CC": "\\mathbb{C}",
+        },
+        trust: true,
+      }]]}
     >
       {`$${children}$`}
     </ReactMarkdown>
@@ -105,7 +129,20 @@ export function DisplayMath({ children }: { children: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkMath]}
-      rehypePlugins={[rehypeKatex]}
+      rehypePlugins={[[rehypeKatex, {
+        strict: false,
+        throwOnError: false,
+        errorColor: '#cc0000',
+        macros: {
+          "\\RR": "\\mathbb{R}",
+          "\\NN": "\\mathbb{N}",
+          "\\ZZ": "\\mathbb{Z}",
+          "\\QQ": "\\mathbb{Q}",
+          "\\CC": "\\mathbb{C}",
+        },
+        trust: true,
+        displayMode: true,
+      }]]}
     >
       {`$$${children}$$`}
     </ReactMarkdown>

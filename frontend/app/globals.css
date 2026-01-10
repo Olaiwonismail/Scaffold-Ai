@@ -104,6 +104,9 @@
 /* KaTeX overrides for better integration */
 .katex {
   font-size: 1em !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 .katex-display {
