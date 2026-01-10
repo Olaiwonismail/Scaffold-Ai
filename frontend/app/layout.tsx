@@ -1,6 +1,8 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
@@ -24,6 +26,8 @@ export default function RootLayout({
         <div className="fixed inset-0 -z-10 h-full w-full bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
         <div className="fixed inset-0 -z-20 h-full w-full bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(198,177,240,0.3),rgba(255,255,255,0))]"></div>
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
