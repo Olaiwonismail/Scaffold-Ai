@@ -78,6 +78,10 @@
 
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   button {
@@ -107,6 +111,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-family: 'KaTeX_Main', 'Times New Roman', serif;
 }
 
 .katex-display {
@@ -119,6 +124,21 @@
 
 .katex-display > .katex {
   text-align: center;
+  font-size: 1.1em;
+}
+
+/* Improve inline math spacing */
+.katex .base {
+  margin: 0 0.1em;
+}
+
+/* Better rendering for fractions and symbols */
+.katex .frac-line {
+  border-bottom-width: 0.04em;
+}
+
+.katex .sizing.reset-size1.frac-line {
+  border-bottom-width: 0.06em;
 }
 
 /* Prose overrides for chat bubbles */

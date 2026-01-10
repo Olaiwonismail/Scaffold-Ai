@@ -45,7 +45,12 @@ async def ask_chatbot(query: str, user_id: str):
     
     system_message = (
         "You are a helpful assistant. Use the following context in your response:\n\n"
-        f"{docs_content}"
+        f"{docs_content}\n\n"
+        r"When responding, use LaTeX formatting for mathematical expressions:\n"
+        r"- Wrap inline math in single $ symbols, e.g., $x^2 + y^2 = z^2$\n"
+        r"- Wrap display math in double $$ symbols, e.g., $$\int_0^1 f(x) dx$$\n"
+        r"- Use proper LaTeX syntax for fractions, sums, integrals, etc.\n"
+        r"- Common symbols: \pi, \theta, \alpha, \beta, \infty, \sum, \int, \frac, \sqrt"
     )
     
     response = model.invoke([
