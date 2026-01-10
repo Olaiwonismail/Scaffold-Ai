@@ -133,7 +133,9 @@ export default function LearnPage() {
       const response = await fetch(`/api/notes?${params.toString()}`)
       if (response.ok) {
         const payload = await response.json()
-        setNoteContent(payload.content ?? "")
+        // Convert literal \n to actual newlines
+        const processedContent = (payload.content ?? "").replace(/\\n/g, '\n')
+        setNoteContent(processedContent)
       } else {
         console.error("Failed to fetch notes:", response.status)
         setNoteStatus("Failed to load")

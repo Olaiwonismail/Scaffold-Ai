@@ -138,9 +138,9 @@ Output ONLY valid JSON matching the structure below.
         cleaned = raw.replace("```json", "").replace("```", "").strip()
         payload = json.loads(cleaned)
         if isinstance(payload, dict) and "lesson_phases" in payload:
-            phases = payload.get("lesson_phases", [])
-            if phases and isinstance(phases[0], dict):
-                phases[0]["images"] = images
+            for phase in payload.get("lesson_phases", []):
+                if isinstance(phase, dict):
+                    phase["images"] = images
             return json.dumps(payload)
     except Exception:
         pass  # fallback to original content on parse issues

@@ -19,6 +19,9 @@ export function LatexRenderer({ content, className = "" }: LatexRendererProps) {
     // Handle escaped backslashes that might come from JSON
     processed = processed.replace(/\\\\/g, '\\')
     
+    // Convert literal \n to actual newlines
+    processed = processed.replace(/\\n/g, '\n')
+    
     // Convert \[ \] to $$ $$ for display math
     processed = processed.replace(/\\\[/g, '$$')
     processed = processed.replace(/\\\]/g, '$$')
