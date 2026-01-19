@@ -18,10 +18,17 @@ import {
   ArrowRight,
   Play,
   Star,
-  Users
+  Users,
+  ChevronDown
 } from "lucide-react"
 import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "@/lib/firebase"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 export default function LandingPage() {
   const router = useRouter()
@@ -101,8 +108,68 @@ export default function LandingPage() {
     },
   ]
 
+  const faqs = [
+    {
+      question: "What is the best app to help me study?",
+      answer: "StudyLabs is designed as the ultimate AI study companion for university students. It transforms your study materials (PDFs, videos, links) into interactive courses, quizzes, and provides an AI tutor to answer your specific questions."
+    },
+    {
+      question: "How can AI help university students study better?",
+      answer: "AI helps university students by creating personalized learning paths, generating practice quizzes from lecture notes, and explaining complex concepts in simple terms. StudyLabs adapts to your learning pace to ensure you master the material efficiently."
+    },
+    {
+      question: "Can I upload my own PDF notes?",
+      answer: "Yes! StudyLabs allows you to upload PDFs, YouTube videos, and web links. Our AI processes these materials to create structured lessons and quizzes tailored to your specific course content."
+    },
+    {
+      question: "Is StudyLabs free for students?",
+      answer: "StudyLabs offers a free tier that allows you to start learning immediately. You can upload materials and generate courses without a credit card."
+    }
+  ]
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "StudyLabs",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "description": "AI-powered study app for university students. Convert PDFs to quizzes, get homework help, and personalized tutoring.",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "ratingCount": "1250"
+    }
+  }
+
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqs.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  }
+
   return (
     <div className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+
       {/* Header */}
       <header className="border-b border-border/20 bg-card/40 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -273,6 +340,37 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-20 bg-card/30">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Common questions about using StudyLabs for university studies.
+            </p>
+          </motion.div>
+
+          <Accordion type="single" collapsible className="w-full">
+            {faqs.map((faq, index) => (
+              <AccordionItem key={index} value={`item-${index}`}>
+                <AccordionTrigger>{faq.question}</AccordionTrigger>
+                <AccordionContent>
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       </section>
 
